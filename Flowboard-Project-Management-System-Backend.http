@@ -1,0 +1,6 @@
+@Flowboard_Project_Management_System_Backend_HostAddress = http://localhost:5158
+
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/public
+Accept: application/json
+
+###
