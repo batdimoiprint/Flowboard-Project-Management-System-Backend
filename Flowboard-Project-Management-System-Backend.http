@@ -1,6 +1,132 @@
 @Flowboard_Project_Management_System_Backend_HostAddress = http://localhost:5158
+@token = 
 
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/public
+### Auth - Login
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "jane.doe@example.com",
+  "password": "P@ssw0rd!"
+}
+
+###
+# Auth - Register (create user)
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "userName": "jdoe",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "middleName": "A",
+  "contactNumber": "+1234567890",
+  "birthDate": "1990-01-01T00:00:00Z",
+  "userIMG": null,
+  "email": "jane.doe@example.com",
+  "password": "P@ssw0rd!"
+}
+
+###
+# Get current user profile (requires Authorization)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/me
+Authorization: Bearer {{token}}
 Accept: application/json
+
+###
+# Get user by id
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/{{userId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+# Task - Create
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "categoryId": "653e9b8f1a2b3c4d5e6f7890",
+  "assignedTo": "653e9b8f1a2b3c4d5e6f7891",
+  "title": "Design database schema",
+  "description": "Create ER diagram and migration scripts for tasks and users.",
+  "priority": "Important",
+  "status": "to do",
+  "startDate": "2025-11-06T09:00:00Z",
+  "endDate": "2025-11-13T17:00:00Z",
+  "createdBy": "653e9b8f1a2b3c4d5e6f7892",
+  "comments": [
+    {
+      "authorId": "653e9b8f1a2b3c4d5e6f7892",
+      "text": "Initial task created",
+      "createdAt": "2025-11-06T09:05:00Z"
+    }
+  ]
+}
+
+###
+# Task - Get all
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+# Task - Get by id
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{taskId}}
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###
+# Task - Update (replace fields)
+PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{taskId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "categoryId": "653e9b8f1a2b3c4d5e6f7890",
+  "assignedTo": "653e9b8f1a2b3c4d5e6f7891",
+  "title": "Design database schema - updated",
+  "description": "Updated description with additional tables.",
+  "priority": "Medium",
+  "status": "in progress",
+  "startDate": "2025-11-06T09:00:00Z",
+  "endDate": "2025-11-14T17:00:00Z",
+  "createdBy": "653e9b8f1a2b3c4d5e6f7892",
+  "comments": [
+    {
+      "authorId": "653e9b8f1a2b3c4d5e6f7892",
+      "text": "Started work on schema",
+      "createdAt": "2025-11-07T10:00:00Z"
+    }
+  ]
+}
+
+###
+# Task - Partial update (PATCH example, if supported)
+PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{taskId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "done",
+  "priority": "Low"
+}
+
+###
+# Task - Delete
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{taskId}}
+Authorization: Bearer {{token}}
+
+###
+# Example: add a comment to a task (if API supports comments endpoint)
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{taskId}}/comments
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "authorId": "653e9b8f1a2b3c4d5e6f7891",
+  "text": "Please review the ER diagram.",
+  "createdAt": "2025-11-08T12:00:00Z"
+}
 
 ###
