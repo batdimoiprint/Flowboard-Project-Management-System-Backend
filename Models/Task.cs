@@ -17,8 +17,7 @@ namespace Flowboard_Project_Management_System_Backend.Models
         // ----------------------------------------------------
         // 📦 Category & Assignment Info
         // ----------------------------------------------------
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string? CategoryId { get; set; }
+        public string? Category { get; set; }
 
         [BsonRepresentation(BsonType.ObjectId)]
         public string? AssignedTo { get; set; }

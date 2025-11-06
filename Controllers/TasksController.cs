@@ -132,25 +132,39 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             foreach (var kv in updates)
             {
-                var field = kv.Key;
+                var fieldLower = kv.Key.ToLowerInvariant();
                 var value = kv.Value;
 
-                switch (field.ToLowerInvariant())
+                switch (fieldLower)
                 {
                     case "title":
-                    case "description":
-                    case "priority":
-                    case "status":
-                    case "assignedto":
-                    case "categoryid":
-                    case "createdby":
-                        updateDefs.Add(Builders<TaskModel>.Update.Set(field, value?.ToString()));
+                        updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.Title, value?.ToString()));
                         break;
-
+                    case "description":
+                        updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.Description, value?.ToString()));
+                        break;
+                    case "priority":
+                        updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.Priority, value?.ToString()));
+                        break;
+                    case "status":
+                        updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.Status, value?.ToString()));
+                        break;
+                    case "assignedto":
+                        updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.AssignedTo, value?.ToString()));
+                        break;
+                    case "category":
+                        updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.Category, value?.ToString()));
+                        break;
+                    case "createdby":
+                        updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.CreatedBy, value?.ToString()));
+                        break;
                     case "startdate":
+                        if (DateTime.TryParse(value?.ToString(), out var startDate))
+                            updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.StartDate, startDate));
+                        break;
                     case "enddate":
-                        if (DateTime.TryParse(value?.ToString(), out var date))
-                            updateDefs.Add(Builders<TaskModel>.Update.Set(field, date));
+                        if (DateTime.TryParse(value?.ToString(), out var endDate))
+                            updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.EndDate, endDate));
                         break;
                 }
             }

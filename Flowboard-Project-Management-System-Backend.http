@@ -30,12 +30,12 @@ Content-Type: application/json
 ###
 # Get current user profile (requires Authorization)
 GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/me
-Authorization: Bearer {{token}}
+
 Accept: application/json
 
 ###
 # Get user by id
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/{{userId}}
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/690d09fb0e4b36d6a7b90d3b
 Authorization: Bearer {{token}}
 Accept: application/json
 
@@ -46,18 +46,18 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "categoryId": "653e9b8f1a2b3c4d5e6f7890",
-  "assignedTo": "653e9b8f1a2b3c4d5e6f7891",
+  "category": "design",
+  "assignedTo": "690d04b90943671dbf22f65e",
   "title": "WHOOO WANNA ROCK WITH JENNY",
   "description": "TESTINGS POTAs.",
   "priority": "Important",
   "status": "to do",
   "startDate": "2025-11-06T09:00:00Z",
   "endDate": "2025-11-13T17:00:00Z",
-  "createdBy": "653e9b8f1a2b3c4d5e6f7892",
+  "createdBy": "690d04b90943671dbf22f65e",
   "comments": [
     {
-      "authorId": "653e9b8f1a2b3c4d5e6f7892",
+      "authorId": "690d04b90943671dbf22f65e",
       "text": "Initial task created",
       "createdAt": "2025-11-06T09:05:00Z"
     }
@@ -78,23 +78,22 @@ Accept: application/json
 
 ###
 # Task - Update (replace fields)
-PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{taskId}}
+PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/690d09840e4b36d6a7b90d3a
 Content-Type: application/json
-Authorization: Bearer {{token}}
 
 {
-  "categoryId": "653e9b8f1a2b3c4d5e6f7890",
-  "assignedTo": "653e9b8f1a2b3c4d5e6f7891",
+  "category": "updated-design",
+  "assignedTo": "690d04b90943671dbf22f65e",
   "title": "Design database schema - updated",
   "description": "Updated description with additional tables.",
   "priority": "Medium",
   "status": "in progress",
   "startDate": "2025-11-06T09:00:00Z",
   "endDate": "2025-11-14T17:00:00Z",
-  "createdBy": "653e9b8f1a2b3c4d5e6f7892",
+  "createdBy": "690d04b90943671dbf22f65e",
   "comments": [
     {
-      "authorId": "653e9b8f1a2b3c4d5e6f7892",
+      "authorId": "690d04b90943671dbf22f65e",
       "text": "Started work on schema",
       "createdAt": "2025-11-07T10:00:00Z"
     }
@@ -103,9 +102,9 @@ Authorization: Bearer {{token}}
 
 ###
 # Task - Partial update (PATCH example, if supported)
-PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{taskId}}
+PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/690d0eb8f150f4c51b209391
 Content-Type: application/json
-Authorization: Bearer {{token}}
+
 
 {
   "status": "done",
