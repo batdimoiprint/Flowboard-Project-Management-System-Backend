@@ -37,11 +37,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-
-// Use CORS policy
-app.UseCors("AllowFrontend");
-
 app.UseHttpsRedirection();
+
+// Use CORS policy - must be after UseHttpsRedirection and before UseAuthorization
+app.UseCors("AllowFrontend");
 
 app.UseAuthorization();
 
