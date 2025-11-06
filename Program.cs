@@ -15,7 +15,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy => policy
-            .WithOrigins("*")
+            .WithOrigins("https://flowboard.azurewebsites.net")
             .AllowAnyHeader()
             .AllowAnyMethod()
     );
@@ -37,10 +37,11 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
 
-// Use CORS policy - must be after UseHttpsRedirection and before UseAuthorization
+// Use CORS policy
 app.UseCors("AllowFrontend");
+
+app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
