@@ -15,10 +15,12 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
     public class TasksController : ControllerBase
     {
         private readonly MongoDbService _mongoDbService;
+        private readonly IMongoCollection<TaskModel> _tasksCollection;
 
         public TasksController(MongoDbService mongoDbService)
         {
             _mongoDbService = mongoDbService;
+            _tasksCollection = _mongoDbService.GetCollection<TaskModel>("tasks");
         }
 
         // --------------------------------------------------------------------
@@ -29,12 +31,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
         {
             try
             {
-                var tasks = await _mongoDbService.GetAllAsync<TaskModel>("tasks");
-
-                if (tasks == null || tasks.Count == 0)
-                    return Ok(new List<TaskModel>()); // return empty list
-
-                return Ok(tasks);
+                var tasks = await _tasksCollection.Find(Builders<TaskModel>.Filter.Empty).ToListAsync();
+                return Ok(tasks ?? new List<TaskModel>());
             }
             catch (Exception ex)
             {
@@ -48,16 +46,15 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
         [HttpGet("{id}", Name = "GetTaskById")]
         public async Task<IActionResult> GetById(string id)
         {
-            if (string.IsNullOrEmpty(id))
-                return BadRequest(new { message = "ID is required." });
+            if (!ObjectId.TryParse(id, out var objectId))
+                return BadRequest(new { message = "Invalid task ID format." });
 
             try
             {
-                var task = await _mongoDbService.GetByIdAsync<TaskModel>("tasks", id);
-                if (task == null)
-                    return NotFound(new { message = "Task not found." });
-
-                return Ok(task);
+                var task = await _tasksCollection.Find(t => t.Id == id).FirstOrDefaultAsync();
+                return task == null
+                    ? NotFound(new { message = "Task not found." })
+                    : Ok(task);
             }
             catch (Exception ex)
             {
@@ -77,14 +74,12 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            if (string.IsNullOrEmpty(task.Id))
-                task.Id = ObjectId.GenerateNewId().ToString();
-
+            task.Id ??= ObjectId.GenerateNewId().ToString();
             task.CreatedAt = DateTime.UtcNow;
 
             try
             {
-                await _mongoDbService.InsertOneAsync("tasks", task);
+                await _tasksCollection.InsertOneAsync(task);
                 return CreatedAtRoute("GetTaskById", new { id = task.Id }, task);
             }
             catch (Exception ex)
@@ -99,8 +94,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, [FromBody] TaskModel updatedTask)
         {
-            if (string.IsNullOrEmpty(id))
-                return BadRequest(new { message = "ID is required." });
+            if (!ObjectId.TryParse(id, out _))
+                return BadRequest(new { message = "Invalid ID format." });
 
             if (updatedTask == null)
                 return BadRequest(new { message = "Task body is required." });
@@ -109,7 +104,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             try
             {
-                var result = await _mongoDbService.ReplaceOneAsync("tasks", id, updatedTask);
+                var result = await _tasksCollection.ReplaceOneAsync(t => t.Id == id, updatedTask);
                 if (result.MatchedCount == 0)
                     return NotFound(new { message = "Task not found." });
 
@@ -127,8 +122,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
         [HttpPatch("{id}")]
         public async Task<IActionResult> Patch(string id, [FromBody] Dictionary<string, object> updates)
         {
-            if (string.IsNullOrEmpty(id))
-                return BadRequest(new { message = "ID is required." });
+            if (!ObjectId.TryParse(id, out _))
+                return BadRequest(new { message = "Invalid ID format." });
 
             if (updates == null || updates.Count == 0)
                 return BadRequest(new { message = "No updates provided." });
@@ -137,28 +132,25 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             foreach (var kv in updates)
             {
-                var key = kv.Key.ToLowerInvariant();
+                var field = kv.Key;
                 var value = kv.Value;
 
-                switch (key)
+                switch (field.ToLowerInvariant())
                 {
                     case "title":
                     case "description":
                     case "priority":
                     case "status":
-                        updateDefs.Add(Builders<TaskModel>.Update.Set(kv.Key, value?.ToString()));
+                    case "assignedto":
+                    case "categoryid":
+                    case "createdby":
+                        updateDefs.Add(Builders<TaskModel>.Update.Set(field, value?.ToString()));
                         break;
 
                     case "startdate":
                     case "enddate":
-                        if (DateTime.TryParse(value?.ToString(), out var dt))
-                            updateDefs.Add(Builders<TaskModel>.Update.Set(kv.Key, dt));
-                        break;
-
-                    case "assignedto":
-                    case "categoryid":
-                    case "createdby":
-                        updateDefs.Add(Builders<TaskModel>.Update.Set(kv.Key, value?.ToString()));
+                        if (DateTime.TryParse(value?.ToString(), out var date))
+                            updateDefs.Add(Builders<TaskModel>.Update.Set(field, date));
                         break;
                 }
             }
@@ -168,8 +160,10 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             try
             {
-                var filter = Builders<TaskModel>.Filter.Eq("_id", ObjectId.Parse(id));
-                var result = await _mongoDbService.UpdateOneAsync("tasks", filter, Builders<TaskModel>.Update.Combine(updateDefs));
+                var result = await _tasksCollection.UpdateOneAsync(
+                    Builders<TaskModel>.Filter.Eq("_id", ObjectId.Parse(id)),
+                    Builders<TaskModel>.Update.Combine(updateDefs)
+                );
 
                 if (result.MatchedCount == 0)
                     return NotFound(new { message = "Task not found." });
@@ -188,8 +182,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
         [HttpPost("{id}/comments")]
         public async Task<IActionResult> AddComment(string id, [FromBody] CommentDto commentDto)
         {
-            if (string.IsNullOrEmpty(id))
-                return BadRequest(new { message = "ID is required." });
+            if (!ObjectId.TryParse(id, out _))
+                return BadRequest(new { message = "Invalid ID format." });
 
             if (commentDto == null || string.IsNullOrWhiteSpace(commentDto.AuthorId) || string.IsNullOrWhiteSpace(commentDto.Text))
                 return BadRequest(new { message = "AuthorId and Text are required." });
@@ -203,9 +197,11 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             try
             {
-                var filter = Builders<TaskModel>.Filter.Eq("_id", ObjectId.Parse(id));
                 var update = Builders<TaskModel>.Update.Push(t => t.Comments, comment);
-                var result = await _mongoDbService.UpdateOneAsync("tasks", filter, update);
+                var result = await _tasksCollection.UpdateOneAsync(
+                    Builders<TaskModel>.Filter.Eq("_id", ObjectId.Parse(id)),
+                    update
+                );
 
                 if (result.MatchedCount == 0)
                     return NotFound(new { message = "Task not found." });
@@ -224,13 +220,12 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
-            if (string.IsNullOrEmpty(id))
-                return BadRequest(new { message = "ID is required." });
+            if (!ObjectId.TryParse(id, out _))
+                return BadRequest(new { message = "Invalid ID format." });
 
             try
             {
-                var result = await _mongoDbService.DeleteOneAsync<TaskModel>("tasks", id);
-
+                var result = await _tasksCollection.DeleteOneAsync(t => t.Id == id);
                 if (result.DeletedCount == 0)
                     return NotFound(new { message = "Task not found." });
 
