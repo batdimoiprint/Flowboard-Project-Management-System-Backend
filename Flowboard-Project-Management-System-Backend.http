@@ -48,8 +48,8 @@ Authorization: Bearer {{token}}
 {
   "categoryId": "653e9b8f1a2b3c4d5e6f7890",
   "assignedTo": "653e9b8f1a2b3c4d5e6f7891",
-  "title": "Design database schema",
-  "description": "Create ER diagram and migration scripts for tasks and users.",
+  "title": "WHOOO WANNA ROCK WITH JENNY",
+  "description": "TESTINGS POTAs.",
   "priority": "Important",
   "status": "to do",
   "startDate": "2025-11-06T09:00:00Z",

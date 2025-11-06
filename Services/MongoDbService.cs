@@ -14,15 +14,16 @@ namespace Flowboard_Project_Management_System_Backend.Services
         // -------------------------------------------------------
         // ✅ Constructor with connection from DI or config
         // -------------------------------------------------------
-        public MongoDbService(IConfiguration config)
+        public MongoDbService()
         {
-            var connectionString = config.GetValue<string>("MongoDB:ConnectionString") ?? "mongodb://localhost:27017";
-            var databaseName = config.GetValue<string>("MongoDB:DatabaseName") ?? "FlowboardDB";
-
-            _client = new MongoClient(connectionString);
+            // Read from environment variables (set via .env)
+            var connectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING");
+            var databaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE_NAME");
+            var settings = MongoClientSettings.FromConnectionString(connectionString);
+            settings.ServerApi = new ServerApi(ServerApiVersion.V1);
+            _client = new MongoClient(settings);
             _database = _client.GetDatabase(databaseName);
         }
-
         // -------------------------------------------------------
         // ✅ Get collection (public for reuse in controllers)
         // -------------------------------------------------------
