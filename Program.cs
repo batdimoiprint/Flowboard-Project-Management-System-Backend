@@ -15,7 +15,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy => policy
-            .WithOrigins("https://flowboard.azurewebsites.net")
+            .WithOrigins("*")
             .AllowAnyHeader()
             .AllowAnyMethod()
     );
