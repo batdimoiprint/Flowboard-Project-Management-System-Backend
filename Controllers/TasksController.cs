@@ -7,11 +7,15 @@ using MongoDB.Bson;
 using Flowboard_Project_Management_System_Backend.Models;
 using Flowboard_Project_Management_System_Backend.Services;
 using TaskModel = Flowboard_Project_Management_System_Backend.Models.Task;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Flowboard_Project_Management_System_Backend.Controllers
 {
     [ApiController]
     [Route("api/tasks")]
+    [Authorize] // Protect all endpoints with JWT
     public class TasksController : ControllerBase
     {
         private readonly MongoDbService _mongoDbService;
@@ -23,9 +27,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             _tasksCollection = _mongoDbService.GetCollection<TaskModel>("tasks");
         }
 
-        // --------------------------------------------------------------------
-        // ✅ GET /api/tasks - Get all tasks
-        // --------------------------------------------------------------------
+        // GET /api/tasks - Get all tasks
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -40,9 +42,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
-        // --------------------------------------------------------------------
-        // ✅ GET /api/tasks/{id} - Get task by ID
-        // --------------------------------------------------------------------
+        // GET /api/tasks/{id} - Get task by ID
         [HttpGet("{id}", Name = "GetTaskById")]
         public async Task<IActionResult> GetById(string id)
         {
@@ -62,9 +62,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
-        // --------------------------------------------------------------------
-        // ✅ POST /api/tasks - Create a new task
-        // --------------------------------------------------------------------
+        // POST /api/tasks - Create a new task
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] TaskModel task)
         {
@@ -88,9 +86,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
-        // --------------------------------------------------------------------
-        // ✅ PUT /api/tasks/{id} - Replace a task
-        // --------------------------------------------------------------------
+        // PUT /api/tasks/{id} - Replace a task
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, [FromBody] TaskModel updatedTask)
         {
@@ -116,9 +112,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
-        // --------------------------------------------------------------------
-        // ✅ PATCH /api/tasks/{id} - Partial update
-        // --------------------------------------------------------------------
+        // PATCH /api/tasks/{id} - Partial update
         [HttpPatch("{id}")]
         public async Task<IActionResult> Patch(string id, [FromBody] Dictionary<string, object> updates)
         {
@@ -190,9 +184,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
-        // --------------------------------------------------------------------
-        // ✅ POST /api/tasks/{id}/comments - Add a comment
-        // --------------------------------------------------------------------
+        // POST /api/tasks/{id}/comments - Add a comment
         [HttpPost("{id}/comments")]
         public async Task<IActionResult> AddComment(string id, [FromBody] CommentDto commentDto)
         {
@@ -228,9 +220,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
-        // --------------------------------------------------------------------
-        // ✅ DELETE /api/tasks/{id} - Delete a task
-        // --------------------------------------------------------------------
+        // DELETE /api/tasks/{id} - Delete a task
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {

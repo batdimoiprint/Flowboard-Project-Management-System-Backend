@@ -2,9 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Flowboard_Project_Management_System_Backend.Models;
 using Flowboard_Project_Management_System_Backend.Services;
 using MongoDB.Driver;
+using Microsoft.AspNetCore.Authorization;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 [ApiController]
 [Route("api/users")]
+[Authorize] // Protect all routes in this controller with JWT
 public class UsersController : ControllerBase
 {
     private readonly MongoDbService _mongoDbService;
@@ -14,33 +18,25 @@ public class UsersController : ControllerBase
         _mongoDbService = mongoDbService;
     }
 
-    // Returns the current user using a simple Bearer token convention (Bearer {userId})
+    // Returns the current user based on JWT
     [HttpGet("me")]
     public IActionResult Me()
     {
-        var auth = Request.Headers["Authorization"].ToString();
-        string? userId = null;
-        if (!string.IsNullOrWhiteSpace(auth) && auth.StartsWith("Bearer "))
-        {
-            userId = auth.Substring("Bearer ".Length).Trim();
-        }
-
-        if (string.IsNullOrWhiteSpace(userId) && Request.Headers.ContainsKey("x-user-id"))
-        {
-            userId = Request.Headers["x-user-id"].ToString();
-        }
-
-        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized(new { message = "Missing Authorization header (expected Bearer {userId})" });
+        // Extract userId from JWT claims
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized(new { message = "Invalid token: missing user ID." });
 
         var db = _mongoDbService.GetDatabase();
         var usersCollection = db.GetCollection<User>("user");
         var user = usersCollection.Find(u => u.Id == userId).FirstOrDefault();
         if (user == null) return NotFound(new { message = "User not found." });
 
-    user.Password = string.Empty;
+        user.Password = string.Empty;
         return Ok(user);
     }
 
+    // Get a user by ID (still protected)
     [HttpGet("{id}")]
     public IActionResult GetById(string id)
     {
@@ -51,7 +47,7 @@ public class UsersController : ControllerBase
         var user = usersCollection.Find(u => u.Id == id).FirstOrDefault();
         if (user == null) return NotFound(new { message = "User not found." });
 
-    user.Password = string.Empty;
+        user.Password = string.Empty;
         return Ok(user);
     }
 }

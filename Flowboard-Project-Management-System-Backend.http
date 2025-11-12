@@ -1,17 +1,9 @@
 @Flowboard_Project_Management_System_Backend_HostAddress = http://localhost:5158
-@token = 
 
-### Auth - Login
-POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "jane.doe@example.com",
-  "password": "P@ssw0rd!"
-}
-
-###
-# Auth - Register (create user)
+### ===============================
+### Auth - Register
+### ===============================
+# @name register
 POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/register
 Content-Type: application/json
 
@@ -27,28 +19,44 @@ Content-Type: application/json
   "password": "P@ssw0rd!"
 }
 
-###
-# Get current user profile (requires Authorization)
+### ===============================
+### Auth - Login
+### ===============================
+# @name login
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "jane.doe@example.com",
+  "password": "P@ssw0rd!"
+}
+
+### ===============================
+### Users - Current User (Protected)
+### ===============================
 GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/me
-
+Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 
-###
-# Get user by id
+### ===============================
+### Users - Get by ID (Protected)
+### ===============================
 GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/690d09fb0e4b36d6a7b90d3b
-Authorization: Bearer {{token}}
+Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 
-###
-# Task - Create
+### ===============================
+### Tasks - Create (Protected)
+### ===============================
+# @name createTask
 POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{login.response.body.token}}
 
 {
   "category": "design",
   "assignedTo": "690d04b90943671dbf22f65e",
-  "title": "WHOOO WANNA ROCK WITH JENNY",
+  "title": "WHOOO WawdawdcdawNY",
   "description": "TESTINGS POTAs.",
   "priority": "Important",
   "status": "to do",
@@ -64,22 +72,26 @@ Authorization: Bearer {{token}}
   ]
 }
 
-###
-# Task - Get all
+### ===============================
+### Tasks - Get All (Protected)
+### ===============================
 GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks
-Authorization: Bearer {{token}}
+Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 
-###
-# Task - Get by id
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{taskId}}
-Authorization: Bearer {{token}}
+### ===============================
+### Tasks - Get by ID (Protected)
+### ===============================
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 
-###
-# Task - Update (replace fields)
-PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/690d09840e4b36d6a7b90d3a
+### ===============================
+### Tasks - Update (Replace, Protected)
+### ===============================
+PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
 Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
 
 {
   "category": "updated-design",
@@ -100,27 +112,30 @@ Content-Type: application/json
   ]
 }
 
-###
-# Task - Partial update (PATCH example, if supported)
-PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/690d0eb8f150f4c51b209391
+### ===============================
+### Tasks - Partial Update (PATCH, Protected)
+### ===============================
+PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
 Content-Type: application/json
-
+Authorization: Bearer {{login.response.body.token}}
 
 {
   "status": "done",
   "priority": "Low"
 }
 
-###
-# Task - Delete
-DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{taskId}}
-Authorization: Bearer {{token}}
+### ===============================
+### Tasks - Delete (Protected)
+### ===============================
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
 
-###
-# Example: add a comment to a task (if API supports comments endpoint)
-POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{taskId}}/comments
+### ===============================
+### Tasks - Add Comment (Protected)
+### ===============================
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}/comments
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{login.response.body.token}}
 
 {
   "authorId": "653e9b8f1a2b3c4d5e6f7891",
@@ -128,4 +143,50 @@ Authorization: Bearer {{token}}
   "createdAt": "2025-11-08T12:00:00Z"
 }
 
-###
+### ===============================
+### Projects - Get All (Protected)
+### ===============================
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### ===============================
+### Projects - Get by ID (Protected)
+### ===============================
+# @name getProject
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### ===============================
+### Projects - Create (Protected)
+### ===============================
+# @name createProject
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "projectName": "New Project",
+  "description": "Project description",
+  "teamMembers": ["690d04b90943671dbf22f65e"]
+}
+
+### ===============================
+### Projects - Update (Protected)
+### ===============================
+PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "projectName": "Updated Project",
+  "description": "Updated description",
+  "teamMembers": ["690d04b90943671dbf22f65e"]
+}
+
+### ===============================
+### Projects - Delete (Protected)
+### ===============================
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}

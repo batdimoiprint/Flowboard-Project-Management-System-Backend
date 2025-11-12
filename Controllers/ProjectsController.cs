@@ -4,9 +4,13 @@ using Flowboard_Project_Management_System_Backend.Services;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 [ApiController]
 [Route("api/projects")]
+[Authorize] // Protect all endpoints with JWT
 public class ProjectsController : ControllerBase
 {
     private readonly MongoDbService _mongoDbService;
@@ -16,6 +20,7 @@ public class ProjectsController : ControllerBase
         _mongoDbService = mongoDbService;
     }
 
+    // GET /api/projects - Get all projects
     [HttpGet]
     public IActionResult GetAll()
     {
@@ -25,6 +30,7 @@ public class ProjectsController : ControllerBase
         return Ok(projects);
     }
 
+    // GET /api/projects/{id} - Get project by ID
     [HttpGet("{id}", Name = "GetProjectById")]
     public IActionResult GetById(string id)
     {
@@ -38,6 +44,7 @@ public class ProjectsController : ControllerBase
         return Ok(project);
     }
 
+    // POST /api/projects - Create a new project
     [HttpPost]
     public IActionResult Create([FromBody] Project project)
     {
@@ -55,6 +62,7 @@ public class ProjectsController : ControllerBase
         return CreatedAtRoute("GetProjectById", new { id = project.Id }, project);
     }
 
+    // PUT /api/projects/{id} - Replace a project
     [HttpPut("{id}")]
     public IActionResult Update(string id, [FromBody] Project updatedProject)
     {
@@ -72,6 +80,7 @@ public class ProjectsController : ControllerBase
         return NoContent();
     }
 
+    // DELETE /api/projects/{id} - Delete a project
     [HttpDelete("{id}")]
     public IActionResult Delete(string id)
     {

@@ -3,8 +3,12 @@ using Flowboard_Project_Management_System_Backend.Models;
 using Flowboard_Project_Management_System_Backend.Services;
 using MongoDB.Driver;
 using System;
-
 using BCrypt.Net;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+
 // Route changed to api/auth for registration
 [ApiController]
 [Route("api/auth")]
@@ -42,7 +46,6 @@ public class PublicController : ControllerBase
         }
 
         user.CreatedAt = DateTime.UtcNow;
-
         user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
 
         usersCollection.InsertOne(user);
@@ -50,9 +53,9 @@ public class PublicController : ControllerBase
         user.Password = null;
         return Ok(new { message = "Registration successful!", user });
     }
+
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequest loginRequest)
-
     {
         if (loginRequest == null || string.IsNullOrEmpty(loginRequest.Email) || string.IsNullOrEmpty(loginRequest.Password))
         {
@@ -65,15 +68,7 @@ public class PublicController : ControllerBase
         // Find user by email
         var user = usersCollection.Find(u => u.Email == loginRequest.Email).FirstOrDefault();
 
-        if (user == null)
-        {
-            return Unauthorized(new { message = "Invalid email or password." });
-        }
-
-        // Verify hashed password
-        bool isPasswordValid = BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password);
-
-        if (!isPasswordValid)
+        if (user == null || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password))
         {
             return Unauthorized(new { message = "Invalid email or password." });
         }
@@ -81,12 +76,42 @@ public class PublicController : ControllerBase
         // Hide password before sending back
         user.Password = null;
 
+        // Generate JWT
+        var token = GenerateJwtToken(user);
+
         return Ok(new
         {
             message = "Login successful!",
-            user
+            user,
+            token
         });
     }
 
+    // ---------------- JWT Helper ----------------
+    private string GenerateJwtToken(User user)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_KEY")!));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER")!;
+        var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")!;
+        var expiryMinutes = int.Parse(Environment.GetEnvironmentVariable("JWT_EXPIRY_MINUTES") ?? "60");
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim("role", "User") // optional role
+        };
+
+        var token = new JwtSecurityToken(
+            issuer,
+            audience,
+            claims,
+            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
+            signingCredentials: creds
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 }
