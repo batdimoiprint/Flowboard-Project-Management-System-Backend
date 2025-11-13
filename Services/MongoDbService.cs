@@ -3,6 +3,8 @@ using MongoDB.Bson;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Flowboard_Project_Management_System_Backend.Models;
+
 
 namespace Flowboard_Project_Management_System_Backend.Services
 {
@@ -23,6 +25,28 @@ namespace Flowboard_Project_Management_System_Backend.Services
             settings.ServerApi = new ServerApi(ServerApiVersion.V1);
             _client = new MongoClient(settings);
             _database = _client.GetDatabase(databaseName);
+        }
+        
+        // -------------------------------------------------------
+        // ✅ Automatically create unique indexes for users
+        // -------------------------------------------------------
+         private void EnsureIndexes()
+        {
+            var usersCollection = _database.GetCollection<User>("user");
+
+            var emailIndex = new CreateIndexModel<User>(
+                Builders<User>.IndexKeys.Ascending(u => u.Email),
+                new CreateIndexOptions { Unique = true }
+            );
+
+            var usernameIndex = new CreateIndexModel<User>(
+                Builders<User>.IndexKeys.Ascending(u => u.UserName),
+                new CreateIndexOptions { Unique = true }
+            );
+
+            usersCollection.Indexes.CreateMany(new[] { emailIndex, usernameIndex });
+
+            Console.WriteLine("[MongoDbService] Unique indexes for Email and Username ensured.");
         }
         // -------------------------------------------------------
         // ✅ Get collection (public for reuse in controllers)
@@ -60,11 +84,13 @@ namespace Flowboard_Project_Management_System_Backend.Services
         // -------------------------------------------------------
         // ✅ Insert one document
         // -------------------------------------------------------
-        public async Task InsertOneAsync<T>(string collectionName, T document)
+        public async Task<T> InsertOneAsync<T>(string collectionName, T document)
         {
             var collection = GetCollection<T>(collectionName);
             await collection.InsertOneAsync(document);
+            return document; // ✅ returns the same inserted document
         }
+
 
         // -------------------------------------------------------
         // ✅ Replace (PUT)

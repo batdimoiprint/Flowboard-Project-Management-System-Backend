@@ -8,14 +8,14 @@ POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/regist
 Content-Type: application/json
 
 {
-  "userName": "jdoe",
+  "userName": "rox",
   "firstName": "Jane",
   "lastName": "Doe",
   "middleName": "A",
-  "contactNumber": "+1234567890",
+  "ContactNumber": "123-456-7890",
   "birthDate": "1990-01-01T00:00:00Z",
   "userIMG": null,
-  "email": "jane.doe@example.com",
+  "email": "rox.juliana@example.com",
   "password": "P@ssw0rd!"
 }
 
@@ -27,7 +27,7 @@ POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "jane.doe@example.com",
+  "UserNameOrEmail": "rox.juliana@example.com",
   "password": "P@ssw0rd!"
 }
 
@@ -167,8 +167,8 @@ Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
 
 {
-  "projectName": "New Project",
-  "description": "Project description",
+  "projectName": "New test Project",
+  "description": "Project TESD description",
   "teamMembers": ["690d04b90943671dbf22f65e"]
 }
 
@@ -182,7 +182,10 @@ Authorization: Bearer {{login.response.body.token}}
 {
   "projectName": "Updated Project",
   "description": "Updated description",
-  "teamMembers": ["690d04b90943671dbf22f65e"]
+  "teamMembers": ["690d04b90943671dbf22f65e"],
+  "permissions": {
+    "690d04b90943671dbf22f65e": "Owner"
+  }
 }
 
 ### ===============================

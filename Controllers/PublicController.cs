@@ -30,9 +30,11 @@ public class PublicController : ControllerBase
     [HttpPost("register")]
     public IActionResult Register([FromBody] User user)
     {
-        if (user == null || string.IsNullOrEmpty(user.Email) || string.IsNullOrEmpty(user.Password))
+        if (user == null || string.IsNullOrEmpty(user.Email) ||
+        string.IsNullOrEmpty(user.UserName) ||
+        string.IsNullOrEmpty(user.Password))
         {
-            return BadRequest(new { message = "Email and password are required." });
+            return BadRequest(new { message = "Email, Username and password are required." });
         }
 
         var db = _mongoDbService.GetDatabase();
@@ -42,7 +44,7 @@ public class PublicController : ControllerBase
         var existingUser = usersCollection.Find(u => u.Email == user.Email).FirstOrDefault();
         if (existingUser != null)
         {
-            return Conflict(new { message = "Email already registered." });
+            return Conflict(new { message = "Username or Email already registered." });
         }
 
         user.CreatedAt = DateTime.UtcNow;
@@ -57,20 +59,22 @@ public class PublicController : ControllerBase
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequest loginRequest)
     {
-        if (loginRequest == null || string.IsNullOrEmpty(loginRequest.Email) || string.IsNullOrEmpty(loginRequest.Password))
+        if (loginRequest == null || string.IsNullOrEmpty(loginRequest.UserNameOrEmail) || string.IsNullOrEmpty(loginRequest.Password))
         {
-            return BadRequest(new { message = "Email and password are required." });
+            return BadRequest(new { message = "Username or email and password are required." });
         }
 
         var db = _mongoDbService.GetDatabase();
         var usersCollection = db.GetCollection<User>("user");
 
-        // Find user by email
-        var user = usersCollection.Find(u => u.Email == loginRequest.Email).FirstOrDefault();
+        // Find user by username OR email
+        var user = usersCollection.Find(u => 
+            u.Email == loginRequest.UserNameOrEmail || u.UserName == loginRequest.UserNameOrEmail
+        ).FirstOrDefault();
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password))
         {
-            return Unauthorized(new { message = "Invalid email or password." });
+            return Unauthorized(new { message = "Invalid username/email or password." });
         }
 
         // Hide password before sending back
@@ -87,7 +91,7 @@ public class PublicController : ControllerBase
         });
     }
 
-    // ---------------- JWT Helper ----------------
+        // ---------------- JWT Helper ----------------
     private string GenerateJwtToken(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_KEY")!));
