@@ -34,7 +34,7 @@ public class PublicController : ControllerBase
         string.IsNullOrEmpty(user.UserName) ||
         string.IsNullOrEmpty(user.Password))
         {
-            return BadRequest(new { message = "Email, Username and password are required." });
+            return BadRequest(new { message = "Email or Username and password are required." });
         }
 
         var db = _mongoDbService.GetDatabase();
@@ -59,7 +59,9 @@ public class PublicController : ControllerBase
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequest loginRequest)
     {
-        if (loginRequest == null || string.IsNullOrEmpty(loginRequest.UserNameOrEmail) || string.IsNullOrEmpty(loginRequest.Password))
+        if (loginRequest == null || 
+            string.IsNullOrWhiteSpace(loginRequest.UserNameOrEmail) || 
+            string.IsNullOrWhiteSpace(loginRequest.Password))
         {
             return BadRequest(new { message = "Username or email and password are required." });
         }
@@ -67,9 +69,11 @@ public class PublicController : ControllerBase
         var db = _mongoDbService.GetDatabase();
         var usersCollection = db.GetCollection<User>("user");
 
-        // Find user by username OR email
-        var user = usersCollection.Find(u => 
-            u.Email == loginRequest.UserNameOrEmail || u.UserName == loginRequest.UserNameOrEmail
+        var input = loginRequest.UserNameOrEmail.Trim().ToLower();
+
+        // Find user by username OR email (case-insensitive)
+        var user = usersCollection.Find(u =>
+            u.Email.ToLower() == input || u.UserName.ToLower() == input
         ).FirstOrDefault();
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(loginRequest.Password, user.Password))
@@ -80,7 +84,7 @@ public class PublicController : ControllerBase
         // Hide password before sending back
         user.Password = null;
 
-        // Generate JWT
+        // Generate JWT token
         var token = GenerateJwtToken(user);
 
         return Ok(new
