@@ -27,7 +27,7 @@ POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
-  "UserNameOrEmail": "rox.juliana@example.com",
+  "Email": "rox.juliana@example.com",
   "password": "P@ssw0rd!"
 }
 
