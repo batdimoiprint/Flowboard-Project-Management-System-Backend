@@ -18,6 +18,20 @@ public class UsersController : ControllerBase
         _mongoDbService = mongoDbService;
     }
 
+    // Returns all users (passwords stripped) for assignment dropdowns
+    [HttpGet]
+    public IActionResult GetAll()
+    {
+        var db = _mongoDbService.GetDatabase();
+        var usersCollection = db.GetCollection<User>("user");
+        var users = usersCollection.Find(_ => true).ToList();
+        foreach (var u in users)
+        {
+            u.Password = string.Empty;
+        }
+        return Ok(users);
+    }
+
     // Returns the current user based on JWT
     [HttpGet("me")]
     public IActionResult Me()

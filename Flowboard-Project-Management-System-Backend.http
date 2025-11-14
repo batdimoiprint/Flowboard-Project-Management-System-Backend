@@ -55,17 +55,17 @@ Authorization: Bearer {{login.response.body.token}}
 
 {
   "category": "design",
-  "assignedTo": "690d04b90943671dbf22f65e",
-  "title": "WHOOO WawdawdcdawNY",
+  "assignedTo": "{{login.response.body.user.id}}",
+  "title": "Pakyu Sam",
   "description": "TESTINGS POTAs.",
   "priority": "Important",
   "status": "to do",
   "startDate": "2025-11-06T09:00:00Z",
   "endDate": "2025-11-13T17:00:00Z",
-  "createdBy": "690d04b90943671dbf22f65e",
+  "createdBy": "{{login.response.body.user.id}}",
   "comments": [
     {
-      "authorId": "690d04b90943671dbf22f65e",
+      "authorId": "{{login.response.body.user.id}}",
       "text": "Initial task created",
       "createdAt": "2025-11-06T09:05:00Z"
     }
