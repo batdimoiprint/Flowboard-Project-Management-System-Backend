@@ -1,105 +1,201 @@
 @Flowboard_Project_Management_System_Backend_HostAddress = http://localhost:5158
 
 ### ===============================
-### Auth - Register - Done
+### Public - Auth - Done
 ### ===============================
+
+### Auth - Register
 # @name register
 POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/register
 Content-Type: application/json
 
 {
-  "userName": "rox",
-  "firstName": "Jane",
-  "lastName": "Doe",
-  "middleName": "A",
-  "ContactNumber": "123-456-7890",
-  "birthDate": "1990-01-01T00:00:00Z",
+  "userName": "batdimoiprint",
+  "firstName": "John Kenny",
+  "middleName": "Q",
+  "lastName": "Reyes",
+  "ContactNumber": "+639123456789",
+  "birthDate": "2005-01-21T00:00:00Z",
   "userIMG": null,
-  "email": "rox.juliana@example.com",
-  "password": "P@ssw0rd!"
+  "email": "johnkennyreyes21gmail.com",
+  "password": "Hatdog21!"
 }
 
-### ===============================
-### Auth - Login - Done
-### ===============================
+### Auth - Login
 # @name login
 POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
-  "UserNameOrEmail": "rox.juliana@example.com",
-  "password": "P@ssw0rd!"
+  "UserNameOrEmail": "johnkennyreyes21gmail.com",
+  "password": "Hatdog21!"
 }
 
 ### ===============================
-### Users - Current User (Protected)
+### Users
 ### ===============================
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/me
-Authorization: Bearer {{login.response.body.token}}
-Accept: application/json
 
-### ===============================
 ### Users - Get by ID (Protected)
-### ===============================
 GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/{{login.response.body.user.id}}
 Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 
+
+### Users - Update (Replace) - UPDATE - Works
+PATCH  {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/{{login.response.body.user.id}}
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "middleName": "Q"
+}
+
+
+### Patch - Update Password (server must hash before save) - Works
+PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/{{login.response.body.user.id}}
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "password": "Gumanakaya"
+}
+
+
 ### ===============================
-### Tasks - Create (Protected)
+### Projects
 ### ===============================
+
+### Projects - Create (Protected) - Works
+# @name createProject
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "projectName": "IPT102",
+  "description": "Project Management System"
+}
+
+
+### Projects - Get My Projects (Protected) - READ - Works
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{login.response.body.user.id}}
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### Projects - Get by ID (Protected) - Works
+# @name getProject
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/6919d3b0a66df6db05f2567b
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### Projects - Update (Protected) - Works
+PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/6919d3b0a66df6db05f2567b
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "projectName": "Updated Project",
+  "description": "Updated description"
+}
+
+
+### Projects - Add Members (Protected) - Works
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}/member
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "teamMembers": [
+    "69199c6dce4510fd09b4a0eb"
+  ]
+}
+
+### Projects - Add Multiple Members and Permissions (Protected)
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}/member
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "teamMembers": [
+    "691989a863538927dd65315c",
+    "690d04b90943671dbf22f65e"
+  ],
+  "permissions": {
+    "691989a863538927dd65315c": "Editor",
+    "690d04b90943671dbf22f65e": "Team Member"
+  }
+}
+
+### Projects - Remove Single Member (Protected) - Work
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}/member
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "teamMembers": "69183014ce4510fd09b4a0e0"
+}
+
+### Projects - Delete (Protected)
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/6919c7caba3bf16fa679bc92
+Authorization: Bearer {{login.response.body.token}}
+
+### ===============================
+### Tasks
+### ===============================
+
+### Tasks - Create (Protected) - Works
 # @name createTask
 POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks
 Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
 
 {
-  "category": "design",
+  "categoryId": "{{createCategory.response.body.id}}",
   "assignedTo": "{{login.response.body.user.id}}",
-  "title": "Pakyu Sam",
-  "description": "TESTINGS POTAs.",
+  "projectId": "{{createProject.response.body.id}}",
+  "title": "Plan",
+  "description": "Create a Plan.",
   "priority": "Important",
-  "status": "to do",
+  "status": "Pending",
   "startDate": "2025-11-06T09:00:00Z",
   "endDate": "2025-11-13T17:00:00Z",
   "createdBy": "{{login.response.body.user.id}}",
   "comments": [
     {
       "authorId": "{{login.response.body.user.id}}",
-      "text": "Initial task created",
-      "createdAt": "2025-11-06T09:05:00Z"
+      "text": "Initial task created"
     }
   ]
 }
 
-### ===============================
-### Tasks - Get All (Protected)
-### ===============================
+### Tasks - Get All (Protected) - Works
 GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks
 Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 
-### ===============================
-### Tasks - Get by ID (Protected)
-### ===============================
+### Tasks - Get All for a Project (Protected) - Works
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks?projectId={{createProject.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### Tasks - Get by ID (Protected) - Works
 GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
 Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 
-### ===============================
-### Tasks - Update (Replace, Protected)
-### ===============================
+### Tasks - Update (Replace, Protected) - Works
 PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
 Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
 
 {
-  "category": "updated-design",
+  "categoryId": "{{createCategory.response.body.id}}",
+  "projectId": "{{createProject.response.body.id}}",
   "assignedTo": "690d04b90943671dbf22f65e",
   "title": "Design database schema - updated",
   "description": "Updated description with additional tables.",
   "priority": "Medium",
-  "status": "in progress",
+  "status": "Completed",
   "startDate": "2025-11-06T09:00:00Z",
   "endDate": "2025-11-14T17:00:00Z",
   "createdBy": "690d04b90943671dbf22f65e",
@@ -112,27 +208,21 @@ Authorization: Bearer {{login.response.body.token}}
   ]
 }
 
-### ===============================
-### Tasks - Partial Update (PATCH, Protected)
-### ===============================
+### Tasks - Partial Update (PATCH, Protected) - Works
 PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
 Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
 
 {
-  "status": "done",
-  "priority": "Low"
+  "status": "Completed",
+  "priority": "Important"
 }
 
-### ===============================
-### Tasks - Delete (Protected)
-### ===============================
+### Tasks - Delete (Protected) - Works
 DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
 Authorization: Bearer {{login.response.body.token}}
 
-### ===============================
-### Tasks - Add Comment (Protected)
-### ===============================
+### Tasks - Add Comment (Protected) - Works
 POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}/comments
 Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
@@ -143,53 +233,139 @@ Authorization: Bearer {{login.response.body.token}}
   "createdAt": "2025-11-08T12:00:00Z"
 }
 
-### ===============================
-### Projects - Get All (Protected)
-### ===============================
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects
-Authorization: Bearer {{login.response.body.token}}
-Accept: application/json
 
 ### ===============================
-### Projects - Get by ID (Protected)
+### Categories (Per-Project) - Create/Read/Update/Delete
 ### ===============================
-# @name getProject
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}
-Authorization: Bearer {{login.response.body.token}}
-Accept: application/json
 
-### ===============================
-### Projects - Create (Protected)
-### ===============================
-# @name createProject
-POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects
+
+### Categories - Create (Protected) - CREATE - Working
+# @name createCategory
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/categories
 Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
 
 {
-  "projectName": "New test Project",
-  "description": "Project TESD description",
-  "teamMembers": ["690d04b90943671dbf22f65e"]
+  "projectId": "{{createProject.response.body.id}}",
+  "categoryName": "Plan"
 }
 
-### ===============================
-### Projects - Update (Protected)
-### ===============================
-PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}
+### Categories - Get All From a Project (Protected) - READ - Working
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/categories?projectId={{createProject.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+
+### Categories - Get By ID (Protected) - READ - Working
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/categories/{{createCategory.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+
+### Categories - Update (Protected) - UPDATE - Working
+PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/categories/{{createCategory.response.body.id}}
 Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
 
 {
-  "projectName": "Updated Project",
-  "description": "Updated description",
-  "teamMembers": ["690d04b90943671dbf22f65e"],
-  "permissions": {
-    "690d04b90943671dbf22f65e": "Owner"
-  }
+  "categoryName": "Updated Category Name"
 }
 
+### Categories - Delete (Protected) - DELETE - Working
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/categories/{{createCategory.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+
+
+# TODO FOR NEXT
+
+
 ### ===============================
-### Projects - Delete (Protected)
+### Notifications - Create/Read/Update/Delete
 ### ===============================
-DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}
+
+### Notifications: proposed controller (currently not implemented)
+
+### Tasks - Partial Update: Change Category
+PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "categoryId": "{{createCategory.response.body.id}}"
+}
+### - Endpoints: POST /api/notifications, GET /api/notifications?isRead=false, GET /api/notifications/{id}, PATCH /api/notifications/{id}, DELETE /api/notifications/{id}
+### - Model: `FlowboardModel.Notification` (UserId, Message, IsRead, CreatedAt)
+
+### Notifications - Create (Protected) - CREATE
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/notifications
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "userId": "{{login.response.body.user.id}}",
+  "message": "A new task was assigned to you",
+  "isRead": false
+}
+
+### Notifications - Get All For Current User (Protected) - READ
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/notifications
+Authorization: Bearer {{login.response.body.token}}
+
+### Notifications - Get Unread (Protected) - READ
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/notifications?isRead=false
+Authorization: Bearer {{login.response.body.token}}
+
+### Notifications - Get By ID (Protected) - READ
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/notifications/{{notificationId}}
+Authorization: Bearer {{login.response.body.token}}
+
+### Notifications - Update (Mark Read/Unread) - UPDATE
+PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/notifications/{{notificationId}}
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "isRead": true
+}
+
+### Notifications - Delete (Protected) - DELETE
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/notifications/{{notificationId}}
+Authorization: Bearer {{login.response.body.token}}
+
+### ===============================
+### Permissions - Create/Read/Update/Delete
+### ===============================
+
+### Permissions: project-level and optional permission collection
+### - `Project.Permissions` exists; optionally add a separate `Permissions` controller for permission management per project (POST/GET/PATCH/DELETE).
+
+
+### Permissions - Create (Assign a role to user in project) - CREATE
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/permissions
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "userId": "690d04b90943671dbf22f65e",
+  "projectId": "{{createProject.response.body.id}}",
+  "role": "Team Member",
+  "privileges": { "Create": false, "Read": true, "Update": true, "Delete": false }
+}
+
+### Permissions - Get by Project / User - READ
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/permissions?projectId={{createProject.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+
+### Permissions - Get by ID (Protected) - READ
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/permissions/{{permissionId}}
+Authorization: Bearer {{login.response.body.token}}
+
+### Permissions - Update (Protected) - UPDATE
+PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/permissions/{{permissionId}}
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "role": "Editor",
+  "privileges": { "Create": true, "Read": true, "Update": true, "Delete": false }
+}
+
+### Permissions - Delete (Protected) - DELETE
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/permissions/{{permissionId}}
 Authorization: Bearer {{login.response.body.token}}

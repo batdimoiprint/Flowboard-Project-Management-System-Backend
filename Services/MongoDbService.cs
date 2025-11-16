@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Flowboard_Project_Management_System_Backend.Models;
+using FlowModels = Flowboard_Project_Management_System_Backend.Models.FlowboardModel;
 
 
 namespace Flowboard_Project_Management_System_Backend.Services
@@ -32,15 +33,15 @@ namespace Flowboard_Project_Management_System_Backend.Services
         // -------------------------------------------------------
          private void EnsureIndexes()
         {
-            var usersCollection = _database.GetCollection<User>("user");
+            var usersCollection = _database.GetCollection<FlowModels.User>("user");
 
-            var emailIndex = new CreateIndexModel<User>(
-                Builders<User>.IndexKeys.Ascending(u => u.Email),
+            var emailIndex = new CreateIndexModel<FlowModels.User>(
+                Builders<FlowModels.User>.IndexKeys.Ascending(u => u.Email),
                 new CreateIndexOptions { Unique = true }
             );
 
-            var usernameIndex = new CreateIndexModel<User>(
-                Builders<User>.IndexKeys.Ascending(u => u.UserName),
+            var usernameIndex = new CreateIndexModel<FlowModels.User>(
+                Builders<FlowModels.User>.IndexKeys.Ascending(u => u.UserName),
                 new CreateIndexOptions { Unique = true }
             );
 

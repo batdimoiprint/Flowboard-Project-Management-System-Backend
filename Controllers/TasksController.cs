@@ -6,7 +6,8 @@ using MongoDB.Driver;
 using MongoDB.Bson;
 using Flowboard_Project_Management_System_Backend.Models;
 using Flowboard_Project_Management_System_Backend.Services;
-using TaskModel = Flowboard_Project_Management_System_Backend.Models.Task;
+using FlowModels = Flowboard_Project_Management_System_Backend.Models.FlowboardModel;
+using TaskModel = Flowboard_Project_Management_System_Backend.Models.FlowboardModel.Task;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
@@ -27,13 +28,16 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             _tasksCollection = _mongoDbService.GetCollection<TaskModel>("tasks");
         }
 
-        // GET /api/tasks - Get all tasks
+        // GET /api/tasks - Get all tasks (optional: filter by projectId)
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] string? projectId = null)
         {
             try
             {
-                var tasks = await _tasksCollection.Find(Builders<TaskModel>.Filter.Empty).ToListAsync();
+                var filter = string.IsNullOrWhiteSpace(projectId)
+                    ? Builders<TaskModel>.Filter.Empty
+                    : Builders<TaskModel>.Filter.Eq(t => t.ProjectId, projectId);
+                var tasks = await _tasksCollection.Find(filter).ToListAsync();
                 return Ok(tasks ?? new List<TaskModel>());
             }
             catch (Exception ex)
@@ -62,7 +66,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
-        // POST /api/tasks - Create a new task
+        // POST /api/tasks - Create a new task (requires ProjectId)
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] TaskModel task)
         {
@@ -73,6 +77,27 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                 return BadRequest(ModelState);
 
             task.Id ??= ObjectId.GenerateNewId().ToString();
+            if (string.IsNullOrWhiteSpace(task.ProjectId))
+                return BadRequest(new { message = "ProjectId is required for a Task." });
+
+            // optional: check that Project exists
+            var db = _mongoDbService.GetDatabase();
+            var projectsCollection = db.GetCollection<FlowModels.Project>("project");
+            var projectExists = projectsCollection.Find(p => p.Id == task.ProjectId).FirstOrDefault();
+            if (projectExists == null)
+                return BadRequest(new { message = "ProjectId does not exist." });
+            // optional: check that CategoryId exists and belongs to the project
+            if (!string.IsNullOrWhiteSpace(task.CategoryId))
+            {
+                var categoriesCollection = db.GetCollection<FlowModels.Category>("categories");
+                var categoryExists = categoriesCollection.Find(c => c.Id == task.CategoryId).FirstOrDefault();
+                if (categoryExists == null)
+                    return BadRequest(new { message = "CategoryId does not exist." });
+                if (categoryExists.ProjectId != task.ProjectId)
+                    return BadRequest(new { message = "CategoryId does not belong to the provided ProjectId." });
+                // optional: set the Category name for backwards compatibility
+                task.Category = categoryExists.CategoryName;
+            }
             task.CreatedAt = DateTime.UtcNow;
 
             try
@@ -100,11 +125,23 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             try
             {
+                var db = _mongoDbService.GetDatabase();
+                // Validate category id if provided
+                if (!string.IsNullOrWhiteSpace(updatedTask.CategoryId))
+                {
+                    var categoriesCollection = db.GetCollection<FlowModels.Category>("categories");
+                    var categoryExists = categoriesCollection.Find(c => c.Id == updatedTask.CategoryId).FirstOrDefault();
+                    if (categoryExists == null)
+                        return BadRequest(new { message = "CategoryId does not exist." });
+                    if (categoryExists.ProjectId != updatedTask.ProjectId)
+                        return BadRequest(new { message = "CategoryId does not belong to the provided ProjectId." });
+                    updatedTask.Category = categoryExists.CategoryName;
+                }
                 var result = await _tasksCollection.ReplaceOneAsync(t => t.Id == id, updatedTask);
                 if (result.MatchedCount == 0)
                     return NotFound(new { message = "Task not found." });
 
-                return NoContent();
+                return StatusCode(200, new { message = "Task Updated." });
             }
             catch (Exception ex)
             {
@@ -123,6 +160,16 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                 return BadRequest(new { message = "No updates provided." });
 
             var updateDefs = new List<UpdateDefinition<TaskModel>>();
+            // Fetch existing task to support validation (e.g., category belongs to project)
+            var existingTask = await _tasksCollection.Find(t => t.Id == id).FirstOrDefaultAsync();
+            if (existingTask == null)
+                return NotFound(new { message = "Task not found." });
+            // Determine projectId for validation. If projectId is being updated within same patch, prefer the new value.
+            var newProjectId = existingTask.ProjectId;
+            if (updates.TryGetValue("projectId", out var maybeNewProject) && maybeNewProject != null)
+            {
+                newProjectId = maybeNewProject.ToString();
+            }
 
             foreach (var kv in updates)
             {
@@ -147,7 +194,25 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                         updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.AssignedTo, value?.ToString()));
                         break;
                     case "category":
+                        // legacy behavior: set the string name
                         updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.Category, value?.ToString()));
+                        break;
+                    case "categoryid":
+                        {
+                            var categoryIdStr = value?.ToString();
+                            if (!string.IsNullOrWhiteSpace(categoryIdStr))
+                            {
+                                var db = _mongoDbService.GetDatabase();
+                                var categoriesCollection = db.GetCollection<FlowModels.Category>("categories");
+                                var categoryExists = categoriesCollection.Find(c => c.Id == categoryIdStr).FirstOrDefault();
+                                if (categoryExists == null)
+                                    return BadRequest(new { message = "CategoryId does not exist." });
+                                if (!string.IsNullOrWhiteSpace(newProjectId) && categoryExists.ProjectId != newProjectId)
+                                    return BadRequest(new { message = "CategoryId does not belong to the task's project (or new projectId supplied in same patch)." });
+                                updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.CategoryId, categoryIdStr));
+                                updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.Category, categoryExists.CategoryName));
+                            }
+                        }
                         break;
                     case "createdby":
                         updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.CreatedBy, value?.ToString()));
@@ -176,7 +241,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                 if (result.MatchedCount == 0)
                     return NotFound(new { message = "Task not found." });
 
-                return NoContent();
+                return StatusCode(200, new { message = "Task Updated." });
             }
             catch (Exception ex)
             {
@@ -194,7 +259,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             if (commentDto == null || string.IsNullOrWhiteSpace(commentDto.AuthorId) || string.IsNullOrWhiteSpace(commentDto.Text))
                 return BadRequest(new { message = "AuthorId and Text are required." });
 
-            var comment = new Comment
+            var comment = new FlowModels.Comment
             {
                 AuthorId = commentDto.AuthorId,
                 Content = commentDto.Text,
@@ -233,7 +298,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                 if (result.DeletedCount == 0)
                     return NotFound(new { message = "Task not found." });
 
-                return NoContent();
+                return StatusCode(200, new { message = "Task Deleted." });
             }
             catch (Exception ex)
             {
