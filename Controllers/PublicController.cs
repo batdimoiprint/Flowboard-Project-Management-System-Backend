@@ -1,13 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
-using Flowboard_Project_Management_System_Backend.Models;
 using Flowboard_Project_Management_System_Backend.Services;
 using MongoDB.Driver;
-using System;
-using BCrypt.Net;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using FlowModels = Flowboard_Project_Management_System_Backend.Models.FlowboardModel;
 
 // Route changed to api/auth for registration
 [ApiController]
@@ -21,14 +19,8 @@ public class PublicController : ControllerBase
         _mongoDbService = mongoDbService;
     }
 
-    [HttpGet("welcome")]
-    public IActionResult Welcome()
-    {
-        return Ok("Welcome to the public API view!");
-    }
-
     [HttpPost("register")]
-    public IActionResult Register([FromBody] User user)
+    public IActionResult Register([FromBody] FlowModels.User user)
     {
         if (user == null || string.IsNullOrEmpty(user.Email) ||
         string.IsNullOrEmpty(user.UserName) ||
@@ -38,7 +30,7 @@ public class PublicController : ControllerBase
         }
 
         var db = _mongoDbService.GetDatabase();
-        var usersCollection = db.GetCollection<User>("user");
+        var usersCollection = db.GetCollection<FlowModels.User>("user");
 
         // Check if email already exists
         var existingUser = usersCollection.Find(u => u.Email == user.Email).FirstOrDefault();
@@ -52,12 +44,12 @@ public class PublicController : ControllerBase
 
         usersCollection.InsertOne(user);
 
-        user.Password = null;
+        user.Password = string.Empty;
         return Ok(new { message = "Registration successful!", user });
     }
 
     [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginRequest loginRequest)
+    public IActionResult Login([FromBody] FlowModels.LoginRequest loginRequest)
     {
         if (loginRequest == null || 
             string.IsNullOrWhiteSpace(loginRequest.UserNameOrEmail) || 
@@ -67,7 +59,7 @@ public class PublicController : ControllerBase
         }
 
         var db = _mongoDbService.GetDatabase();
-        var usersCollection = db.GetCollection<User>("user");
+        var usersCollection = db.GetCollection<FlowModels.User>("user");
 
         var input = loginRequest.UserNameOrEmail.Trim().ToLower();
 
@@ -82,7 +74,7 @@ public class PublicController : ControllerBase
         }
 
         // Hide password before sending back
-        user.Password = null;
+        user.Password = string.Empty;
 
         // Generate JWT token
         var token = GenerateJwtToken(user);
@@ -96,7 +88,7 @@ public class PublicController : ControllerBase
     }
 
         // ---------------- JWT Helper ----------------
-    private string GenerateJwtToken(User user)
+    private string GenerateJwtToken(FlowModels.User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_KEY")!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -107,7 +99,7 @@ public class PublicController : ControllerBase
 
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id ?? string.Empty),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
