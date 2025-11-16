@@ -50,24 +50,6 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
-    // Returns the current user based on JWT
-    [HttpGet("me")]
-    public IActionResult Me()
-    {
-        // Extract userId from JWT claims
-        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-        if (string.IsNullOrWhiteSpace(userId))
-            return Unauthorized(new { message = "Invalid token: missing user ID." });
-
-        var db = _mongoDbService.GetDatabase();
-        var usersCollection = db.GetCollection<FlowModels.User>("user");
-        var user = usersCollection.Find(u => u.Id == userId).FirstOrDefault();
-        if (user == null) return NotFound(new { message = "User not found." });
-
-        user.Password = string.Empty;
-        return Ok(user);
-    }
-
     // Get a user by ID (still protected)
     [HttpGet("{id}")]
     public IActionResult GetById(string id)
