@@ -1,7 +1,7 @@
 @Flowboard_Project_Management_System_Backend_HostAddress = http://localhost:5158
 
 ### ===============================
-### Auth - Register
+### Auth - Register - Done
 ### ===============================
 # @name register
 POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/register
@@ -20,7 +20,7 @@ Content-Type: application/json
 }
 
 ### ===============================
-### Auth - Login
+### Auth - Login - Done
 ### ===============================
 # @name login
 POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
@@ -41,7 +41,7 @@ Accept: application/json
 ### ===============================
 ### Users - Get by ID (Protected)
 ### ===============================
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/690d09fb0e4b36d6a7b90d3b
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/users/{{login.response.body.user.id}}
 Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 
