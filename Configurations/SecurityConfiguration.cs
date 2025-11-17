@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Http;
+using System.Threading.Tasks;
 using System.Text;
 
 namespace Flowboard_Project_Management_System_Backend.Configurations
@@ -21,15 +23,23 @@ namespace Flowboard_Project_Management_System_Backend.Configurations
                 {
                     if (environment.IsDevelopment())
                     {
-                        policy.AllowAnyOrigin()
+                        // In development allow all origins but allow credentials, so we reflect the origin
+                        // with SetIsOriginAllowed. Avoid AllowAnyOrigin together with AllowCredentials.
+                        policy.SetIsOriginAllowed(_ => true)
                               .AllowAnyHeader()
-                              .AllowAnyMethod();
+                              .AllowAnyMethod()
+                              .AllowCredentials();
                     }
                     else
                     {
-                        policy.WithOrigins(productionFrontendOrigin)
-                              .AllowAnyHeader()
-                              .AllowAnyMethod();
+                        // In production only allow configured frontend origin and credentials
+                        if (!string.IsNullOrWhiteSpace(productionFrontendOrigin))
+                        {
+                            policy.WithOrigins(productionFrontendOrigin)
+                                  .AllowAnyHeader()
+                                  .AllowAnyMethod()
+                                  .AllowCredentials();
+                        }
                     }
                 });
             });
@@ -62,6 +72,23 @@ namespace Flowboard_Project_Management_System_Backend.Configurations
                     ValidIssuer = jwtIssuer,
                     ValidAudience = jwtAudience,
                     IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
+                };
+
+                // Allow reading token from an HttpOnly cookie named "jwt" if present
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        if (string.IsNullOrEmpty(context.Token))
+                        {
+                            // Try reading from the cookie
+                            if (context.Request.Cookies.TryGetValue("jwt", out var cookieToken) && !string.IsNullOrEmpty(cookieToken))
+                            {
+                                context.Token = cookieToken;
+                            }
+                        }
+                        return Task.CompletedTask;
+                    }
                 };
             });
 

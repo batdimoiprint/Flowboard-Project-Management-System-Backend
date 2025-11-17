@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Flowboard_Project_Management_System_Backend.Services;
 using MongoDB.Driver;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Http;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -13,10 +14,12 @@ using FlowModels = Flowboard_Project_Management_System_Backend.Models.FlowboardM
 public class PublicController : ControllerBase
 {
     private readonly MongoDbService _mongoDbService;
+    private readonly IHostEnvironment _env;
 
-    public PublicController(MongoDbService mongoDbService)
+    public PublicController(MongoDbService mongoDbService, IHostEnvironment environment)
     {
         _mongoDbService = mongoDbService;
+        _env = environment;
     }
 
     [HttpPost("register")]
@@ -79,12 +82,42 @@ public class PublicController : ControllerBase
         // Generate JWT token
         var token = GenerateJwtToken(user);
 
+        // Set JWT as HttpOnly cookie for automatic browser authentication
+        var expiryMinutes = int.Parse(Environment.GetEnvironmentVariable("JWT_EXPIRY_MINUTES") ?? "60");
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !_env.IsDevelopment(), // Secure cookie in production
+            SameSite = _env.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None,
+            Expires = DateTime.UtcNow.AddMinutes(expiryMinutes),
+            Path = "/"
+        };
+
+        Response.Cookies.Append("jwt", token, cookieOptions);
+
         return Ok(new
         {
             message = "Login successful!",
             user,
-            token
+            
         });
+    }
+
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        // Remove cookie by setting expired options
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            // Secure = !_env.IsDevelopment(),
+            Secure = _env.IsDevelopment(),
+            SameSite = _env.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.None,
+            Expires = DateTime.UtcNow.AddDays(-1),
+            Path = "/"
+        };
+        Response.Cookies.Delete("jwt", cookieOptions);
+        return Ok(new { message = "Logout successful" });
     }
 
         // ---------------- JWT Helper ----------------
