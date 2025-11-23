@@ -139,6 +139,11 @@ Authorization: Bearer {{login.response.body.token}}
 DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/6919c7caba3bf16fa679bc92
 Authorization: Bearer {{login.response.body.token}}
 
+### Projects - Leave Project (Protected) - Self removal
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}/leave
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
 ### ===============================
 ### Tasks
 ### ===============================
@@ -167,6 +172,16 @@ Authorization: Bearer {{login.response.body.token}}
     }
   ]
 }
+
+### Tasks - Get Task from logged in user and assigned by other (Protected)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/user/{{login.response.body.user.id}}
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### Tasks - Get tasks for current authenticated user (shortcut)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/me
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
 
 ### Tasks - Get All (Protected) - Works
 GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks

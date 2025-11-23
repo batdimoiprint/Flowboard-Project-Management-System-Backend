@@ -253,6 +253,63 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                         return StatusCode(500, new { message = "Failed to remove member from project.", detail = ex.Message });
                     }
                 }
+
+                // 🔹 DELETE /api/projects/{id}/leave - remove the current authenticated user from the project
+                [HttpDelete("{id}/leave")]
+                public IActionResult LeaveProject(string id)
+                {
+                    if (string.IsNullOrWhiteSpace(id))
+                        return BadRequest(new { message = "Invalid id." });
+
+                    var db = _mongoDbService.GetDatabase();
+                    var collection = db.GetCollection<FlowModels.Project>("project");
+                    var project = collection.Find(p => p.Id == id).FirstOrDefault();
+                    if (project == null)
+                        return NotFound(new { message = "Project not found." });
+
+                    var requesterId = GetUserIdFromToken();
+                    if (requesterId == null)
+                        return Unauthorized(new { message = "Invalid user token." });
+
+                    // Prevent the project owner/creator from 'leaving' the project using this route
+                    var isOwner = (!string.IsNullOrWhiteSpace(project.CreatedBy) && project.CreatedBy == requesterId) ||
+                                  (project.Permissions != null && project.Permissions.ContainsKey(requesterId) && project.Permissions[requesterId] == "Owner");
+                    if (isOwner)
+                        return Forbid("Project owners cannot leave the project. Transfer ownership or delete the project instead.");
+
+                    var members = project.TeamMembers ?? new List<string>();
+                    if (!members.Contains(requesterId))
+                        return NotFound(new { message = "You are not a member of this project." });
+
+                    // Remove member and permissions if any
+                    members.RemoveAll(m => m == requesterId);
+                    var updateDefs = new List<UpdateDefinition<FlowModels.Project>>();
+                    updateDefs.Add(Builders<FlowModels.Project>.Update.Set(p => p.TeamMembers, members));
+
+                    if (project.Permissions != null && project.Permissions.ContainsKey(requesterId))
+                    {
+                        var newPermissions = new Dictionary<string, string>(project.Permissions);
+                        newPermissions.Remove(requesterId);
+                        updateDefs.Add(Builders<FlowModels.Project>.Update.Set(p => p.Permissions, newPermissions));
+                    }
+
+                    try
+                    {
+                        var result = collection.UpdateOne(
+                            Builders<FlowModels.Project>.Filter.Eq("_id", ObjectId.Parse(id)),
+                            Builders<FlowModels.Project>.Update.Combine(updateDefs)
+                        );
+                        if (result.MatchedCount == 0)
+                            return NotFound(new { message = "Project not found." });
+
+                        var updatedProject = collection.Find(p => p.Id == id).FirstOrDefault();
+                        return Ok(updatedProject);
+                    }
+                    catch (Exception ex)
+                    {
+                        return StatusCode(500, new { message = "Failed to leave project.", detail = ex.Message });
+                    }
+                }
         public ProjectsController(MongoDbService mongoDbService)
         {
             _mongoDbService = mongoDbService;

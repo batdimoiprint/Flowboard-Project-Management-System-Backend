@@ -181,7 +181,7 @@ namespace Flowboard_Project_Management_System_Backend.Models
             public string? ProjectId { get; set; }
 
             [BsonRepresentation(BsonType.ObjectId)]
-            public string? AssignedTo { get; set; }
+            public List<string> AssignedTo { get; set; } = new();
 
             [BsonRepresentation(BsonType.ObjectId)]
             public string? CreatedBy { get; set; }

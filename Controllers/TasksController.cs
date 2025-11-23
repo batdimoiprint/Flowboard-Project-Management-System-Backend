@@ -11,6 +11,7 @@ using TaskModel = Flowboard_Project_Management_System_Backend.Models.FlowboardMo
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 
 namespace Flowboard_Project_Management_System_Backend.Controllers
 {
@@ -46,7 +47,61 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
+        // GET /api/tasks/me - Get tasks for the currently authenticated user (uses JWT subject/NameIdentifier claim)
+        // NOTE: This route MUST come before {id} route to avoid ambiguity
+        [HttpGet("me")]
+        public async Task<IActionResult> GetForCurrentUser()
+        {
+            try
+            {
+                // Try a few common claim types for subject
+                var userId = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                             ?? User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                             ?? User?.FindFirst("id")?.Value;
+
+                if (string.IsNullOrWhiteSpace(userId))
+                    return Unauthorized(new { message = "Unable to determine current user from token." });
+
+                var filter = Builders<TaskModel>.Filter.Or(
+                    Builders<TaskModel>.Filter.AnyEq(t => t.AssignedTo, userId),
+                    Builders<TaskModel>.Filter.Eq(t => t.CreatedBy, userId)
+                );
+
+                var tasks = await _tasksCollection.Find(filter).ToListAsync();
+                return Ok(tasks ?? new List<TaskModel>());
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to fetch current user tasks.", detail = ex.Message });
+            }
+        }
+
+        // GET /api/tasks/user/{userId} - Get tasks involving a specific user (created by OR assigned to)
+        // NOTE: This route MUST come before {id} route to avoid ambiguity
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetByUser(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return BadRequest(new { message = "UserId is required." });
+
+            try
+            {
+                var filter = Builders<TaskModel>.Filter.Or(
+                    Builders<TaskModel>.Filter.AnyEq(t => t.AssignedTo, userId),
+                    Builders<TaskModel>.Filter.Eq(t => t.CreatedBy, userId)
+                );
+
+                var tasks = await _tasksCollection.Find(filter).ToListAsync();
+                return Ok(tasks ?? new List<TaskModel>());
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to fetch user tasks.", detail = ex.Message });
+            }
+        }
+
         // GET /api/tasks/{id} - Get task by ID
+        // NOTE: This generic route MUST come AFTER specific routes like /me and /user/{userId}
         [HttpGet("{id}", Name = "GetTaskById")]
         public async Task<IActionResult> GetById(string id)
         {
@@ -68,15 +123,32 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
         // POST /api/tasks - Create a new task (requires ProjectId)
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] TaskModel task)
+        public async Task<IActionResult> Create([FromBody] CreateTaskDto taskDto)
         {
-            if (task == null)
+            if (taskDto == null)
                 return BadRequest(new { message = "Invalid JSON or null body. Ensure Content-Type: application/json." });
 
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            task.Id ??= ObjectId.GenerateNewId().ToString();
+            // Convert DTO to TaskModel
+            var task = new TaskModel
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                Title = taskDto.Title,
+                Description = taskDto.Description,
+                Priority = taskDto.Priority,
+                Status = taskDto.Status,
+                ProjectId = taskDto.ProjectId,
+                Category = taskDto.Category,
+                CategoryId = taskDto.CategoryId,
+                CreatedBy = taskDto.CreatedBy,
+                AssignedTo = taskDto.AssignedTo ?? new List<string>(),
+                StartDate = string.IsNullOrWhiteSpace(taskDto.StartDate) ? null : DateTime.TryParse(taskDto.StartDate, out var sd) ? sd : null,
+                EndDate = string.IsNullOrWhiteSpace(taskDto.EndDate) ? null : DateTime.TryParse(taskDto.EndDate, out var ed) ? ed : null,
+                CreatedAt = DateTime.UtcNow
+            };
+
             if (string.IsNullOrWhiteSpace(task.ProjectId))
                 return BadRequest(new { message = "ProjectId is required for a Task." });
 
@@ -98,7 +170,6 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                 // optional: set the Category name for backwards compatibility
                 task.Category = categoryExists.CategoryName;
             }
-            task.CreatedAt = DateTime.UtcNow;
 
             try
             {
@@ -113,15 +184,37 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
         // PUT /api/tasks/{id} - Replace a task
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(string id, [FromBody] TaskModel updatedTask)
+        public async Task<IActionResult> Update(string id, [FromBody] UpdateTaskDto taskDto)
         {
             if (!ObjectId.TryParse(id, out _))
                 return BadRequest(new { message = "Invalid ID format." });
 
-            if (updatedTask == null)
+            if (taskDto == null)
                 return BadRequest(new { message = "Task body is required." });
 
-            updatedTask.Id = id;
+            // Get existing task to preserve CreatedAt
+            var existingTask = await _tasksCollection.Find(t => t.Id == id).FirstOrDefaultAsync();
+            if (existingTask == null)
+                return NotFound(new { message = "Task not found." });
+
+            // Convert DTO to TaskModel
+            var updatedTask = new TaskModel
+            {
+                Id = id,
+                Title = taskDto.Title,
+                Description = taskDto.Description,
+                Priority = taskDto.Priority,
+                Status = taskDto.Status,
+                ProjectId = taskDto.ProjectId,
+                Category = taskDto.Category,
+                CategoryId = taskDto.CategoryId,
+                CreatedBy = taskDto.CreatedBy,
+                AssignedTo = taskDto.AssignedTo ?? new List<string>(),
+                StartDate = string.IsNullOrWhiteSpace(taskDto.StartDate) ? null : DateTime.TryParse(taskDto.StartDate, out var sd) ? sd : null,
+                EndDate = string.IsNullOrWhiteSpace(taskDto.EndDate) ? null : DateTime.TryParse(taskDto.EndDate, out var ed) ? ed : null,
+                CreatedAt = existingTask.CreatedAt,
+                Comments = existingTask.Comments
+            };
 
             try
             {
@@ -191,7 +284,17 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                         updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.Status, value?.ToString()));
                         break;
                     case "assignedto":
-                        updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.AssignedTo, value?.ToString()));
+                        if (value is JsonElement element && element.ValueKind == JsonValueKind.Array)
+                        {
+                            var list = JsonSerializer.Deserialize<List<string>>(element.GetRawText());
+                            updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.AssignedTo, list ?? new List<string>()));
+                        }
+                        else
+                        {
+                            var str = value?.ToString();
+                            var list = string.IsNullOrEmpty(str) ? new List<string>() : new List<string> { str };
+                            updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.AssignedTo, list));
+                        }
                         break;
                     case "category":
                         // legacy behavior: set the string name
@@ -218,12 +321,30 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                         updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.CreatedBy, value?.ToString()));
                         break;
                     case "startdate":
-                        if (DateTime.TryParse(value?.ToString(), out var startDate))
-                            updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.StartDate, startDate));
+                        {
+                            var dateStr = value?.ToString();
+                            if (string.IsNullOrWhiteSpace(dateStr))
+                            {
+                                updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.StartDate, null));
+                            }
+                            else if (DateTime.TryParse(dateStr, out var startDate))
+                            {
+                                updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.StartDate, startDate));
+                            }
+                        }
                         break;
                     case "enddate":
-                        if (DateTime.TryParse(value?.ToString(), out var endDate))
-                            updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.EndDate, endDate));
+                        {
+                            var dateStr = value?.ToString();
+                            if (string.IsNullOrWhiteSpace(dateStr))
+                            {
+                                updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.EndDate, null));
+                            }
+                            else if (DateTime.TryParse(dateStr, out var endDate))
+                            {
+                                updateDefs.Add(Builders<TaskModel>.Update.Set(t => t.EndDate, endDate));
+                            }
+                        }
                         break;
                 }
             }
@@ -312,6 +433,38 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             public string? AuthorId { get; set; }
             public string? Text { get; set; }
             public DateTime? CreatedAt { get; set; }
+        }
+
+        // DTO for creating tasks with optional date strings
+        public class CreateTaskDto
+        {
+            public string? Title { get; set; }
+            public string? Description { get; set; }
+            public string? Priority { get; set; }
+            public string? Status { get; set; }
+            public string? ProjectId { get; set; }
+            public string? Category { get; set; }
+            public string? CategoryId { get; set; }
+            public string? CreatedBy { get; set; }
+            public List<string>? AssignedTo { get; set; }
+            public string? StartDate { get; set; }
+            public string? EndDate { get; set; }
+        }
+
+        // DTO for updating tasks with optional date strings
+        public class UpdateTaskDto
+        {
+            public string? Title { get; set; }
+            public string? Description { get; set; }
+            public string? Priority { get; set; }
+            public string? Status { get; set; }
+            public string? ProjectId { get; set; }
+            public string? Category { get; set; }
+            public string? CategoryId { get; set; }
+            public string? CreatedBy { get; set; }
+            public List<string>? AssignedTo { get; set; }
+            public string? StartDate { get; set; }
+            public string? EndDate { get; set; }
         }
     }
 }
