@@ -485,3 +485,5 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 .github/copilot-instructions.md
+copilot-instructions-backend.md
+copilot-instructions-frontend.md
