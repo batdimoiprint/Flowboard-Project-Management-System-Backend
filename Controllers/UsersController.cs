@@ -8,6 +8,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 using FlowModels = Flowboard_Project_Management_System_Backend.Models.FlowboardModel;
 
 [ApiController]
@@ -16,6 +18,8 @@ using FlowModels = Flowboard_Project_Management_System_Backend.Models.FlowboardM
 public class UsersController : ControllerBase
 {
     private readonly MongoDbService _mongoDbService;
+    private const long MaxImageSizeBytes = 5 * 1024 * 1024; // 5MB max
+    private static readonly string[] AllowedImageTypes = { "image/jpeg", "image/png", "image/gif", "image/webp" };
 
     public UsersController(MongoDbService mongoDbService)
     {
@@ -36,6 +40,94 @@ public class UsersController : ControllerBase
         return string.IsNullOrWhiteSpace(userId) ? null : userId;
     }
 
+    // Helper: Convert byte[] to base64 data URL
+    private static string? BytesToDataUrl(byte[]? imageBytes)
+    {
+        if (imageBytes == null || imageBytes.Length == 0) return null;
+        
+        // Detect image type from magic bytes
+        string mimeType = "image/png"; // default
+        if (imageBytes.Length >= 3 && imageBytes[0] == 0xFF && imageBytes[1] == 0xD8 && imageBytes[2] == 0xFF)
+            mimeType = "image/jpeg";
+        else if (imageBytes.Length >= 8 && imageBytes[0] == 0x89 && imageBytes[1] == 0x50 && imageBytes[2] == 0x4E && imageBytes[3] == 0x47)
+            mimeType = "image/png";
+        else if (imageBytes.Length >= 6 && imageBytes[0] == 0x47 && imageBytes[1] == 0x49 && imageBytes[2] == 0x46)
+            mimeType = "image/gif";
+        else if (imageBytes.Length >= 4 && imageBytes[0] == 0x52 && imageBytes[1] == 0x49 && imageBytes[2] == 0x46 && imageBytes[3] == 0x46)
+            mimeType = "image/webp";
+        
+        return $"data:{mimeType};base64,{Convert.ToBase64String(imageBytes)}";
+    }
+
+    // Helper: Convert base64 data URL to byte[]
+    private static byte[]? DataUrlToBytes(string? dataUrl)
+    {
+        if (string.IsNullOrWhiteSpace(dataUrl)) return null;
+        
+        try
+        {
+            // Handle data URL format: data:image/png;base64,iVBORw0KGgo...
+            if (dataUrl.StartsWith("data:"))
+            {
+                var commaIndex = dataUrl.IndexOf(',');
+                if (commaIndex > 0)
+                {
+                    dataUrl = dataUrl.Substring(commaIndex + 1);
+                }
+            }
+            
+            return Convert.FromBase64String(dataUrl);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // Helper: Convert User to response DTO with base64 image
+    private object UserToResponse(FlowModels.User user)
+    {
+        return new
+        {
+            id = user.Id,
+            userName = user.UserName,
+            firstName = user.FirstName,
+            lastName = user.LastName,
+            middleName = user.MiddleName,
+            contactNumber = user.ContactNumber,
+            birthDate = user.BirthDate,
+            email = user.Email,
+            userIMG = BytesToDataUrl(user.UserIMG),
+            createdAt = user.CreatedAt
+        };
+    }
+
+    // Helper: Extract string value from object (handles JsonElement)
+    private static string? GetStringValue(object? value)
+    {
+        if (value == null) return null;
+        
+        if (value is JsonElement jsonElement)
+        {
+            return jsonElement.ValueKind == JsonValueKind.Null ? null : jsonElement.GetString() ?? jsonElement.ToString();
+        }
+        
+        return value.ToString();
+    }
+
+    // Helper: Check if value is null (handles JsonElement)
+    private static bool IsNullValue(object? value)
+    {
+        if (value == null) return true;
+        
+        if (value is JsonElement jsonElement)
+        {
+            return jsonElement.ValueKind == JsonValueKind.Null;
+        }
+        
+        return false;
+    }
+
     // Returns all users (passwords stripped) for assignment dropdowns
     [HttpGet]
     public IActionResult GetAll()
@@ -43,11 +135,9 @@ public class UsersController : ControllerBase
         var db = _mongoDbService.GetDatabase();
         var usersCollection = db.GetCollection<FlowModels.User>("user");
         var users = usersCollection.Find(_ => true).ToList();
-        foreach (var u in users)
-        {
-            u.Password = string.Empty;
-        }
-        return Ok(users);
+        
+        var response = users.Select(u => UserToResponse(u)).ToList();
+        return Ok(response);
     }
 
     // Get a user by ID (still protected)
@@ -61,8 +151,7 @@ public class UsersController : ControllerBase
         var user = usersCollection.Find(u => u.Id == id).FirstOrDefault();
         if (user == null) return NotFound(new { message = "User not found." });
 
-        user.Password = string.Empty;
-        return Ok(user);
+        return Ok(UserToResponse(user));
     }
 
     // PATCH /api/users/{id} - Partial update (only provided fields are updated)
@@ -89,7 +178,7 @@ public class UsersController : ControllerBase
         // email conflict check (done early if present)
         if (updates.TryGetValue("email", out var emailObj) && emailObj != null)
         {
-            var emailStr = emailObj.ToString()?.Trim() ?? string.Empty;
+            var emailStr = GetStringValue(emailObj)?.Trim() ?? string.Empty;
             if (!string.IsNullOrEmpty(emailStr))
             {
                 var existing = usersCollection.Find(u => u.Email.ToLower() == emailStr.ToLower()).FirstOrDefault();
@@ -103,51 +192,62 @@ public class UsersController : ControllerBase
         {
             var key = kv.Key.ToLowerInvariant();
             var value = kv.Value;
+            var stringValue = GetStringValue(value);
+            
             switch (key)
             {
                 case "username":
-                case "userName":
                 case "user_name":
-                    updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.UserName, value?.ToString()));
+                    if (!string.IsNullOrWhiteSpace(stringValue))
+                        updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.UserName, stringValue));
                     break;
                 case "firstname":
-                case "firstName":
-                    updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.FirstName, value?.ToString()));
+                    if (!string.IsNullOrWhiteSpace(stringValue))
+                        updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.FirstName, stringValue));
                     break;
                 case "lastname":
-                case "lastName":
-                    updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.LastName, value?.ToString()));
+                    if (!string.IsNullOrWhiteSpace(stringValue))
+                        updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.LastName, stringValue));
                     break;
                 case "middlename":
-                case "middleName":
-                    updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.MiddleName, value?.ToString()));
+                    updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.MiddleName, stringValue ?? string.Empty));
                     break;
                 case "contactnumber":
                 case "contact":
                 case "contact_number":
-                    updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.ContactNumber, value?.ToString()));
+                    if (!string.IsNullOrWhiteSpace(stringValue))
+                        updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.ContactNumber, stringValue));
                     break;
                 case "birthdate":
                 case "birth_date":
-                    if (DateTime.TryParse(value?.ToString(), out var birthDate))
+                    if (DateTime.TryParse(stringValue, out var birthDate))
                         updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.BirthDate, birthDate));
                     break;
                 case "userimg":
                 case "user_img":
                 case "user_img_base64":
-                    if (value is string base64 && !string.IsNullOrWhiteSpace(base64))
+                    if (IsNullValue(value))
                     {
-                        try {
-                            var bytes = Convert.FromBase64String(base64);
+                        // Allow clearing the image
+                        updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.UserIMG, (byte[]?)null));
+                    }
+                    else if (!string.IsNullOrWhiteSpace(stringValue))
+                    {
+                        var bytes = DataUrlToBytes(stringValue);
+                        if (bytes != null)
+                        {
+                            if (bytes.Length > MaxImageSizeBytes)
+                            {
+                                return BadRequest(new { message = "Image size exceeds 5MB limit." });
+                            }
                             updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.UserIMG, bytes));
                         }
-                        catch { /* invalid base64; ignore or respond with BadRequest? For now ignore */ }
                     }
                     break;
                 case "password":
-                    if (!string.IsNullOrWhiteSpace(value?.ToString()))
+                    if (!string.IsNullOrWhiteSpace(stringValue))
                     {
-                        var hashed = BCrypt.Net.BCrypt.HashPassword(value?.ToString() ?? string.Empty);
+                        var hashed = BCrypt.Net.BCrypt.HashPassword(stringValue);
                         updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.Password, hashed));
                     }
                     break;
@@ -174,8 +274,9 @@ public class UsersController : ControllerBase
                 return NotFound(new { message = "User not found." });
 
             var updatedUser = usersCollection.Find(u => u.Id == id).FirstOrDefault();
-            if (updatedUser != null) updatedUser.Password = string.Empty;
-            return Ok(updatedUser);
+            if (updatedUser == null) return NotFound(new { message = "User not found after update." });
+            
+            return Ok(UserToResponse(updatedUser));
         }
         catch (Exception ex)
         {
