@@ -88,6 +88,11 @@ GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/691
 Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 
+### Projects - Get All Members (Protected) - Works
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/{{createProject.response.body.id}}/members
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
 ### Projects - Update (Protected) - Works
 PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/projects/6919d3b0a66df6db05f2567b
 Content-Type: application/json

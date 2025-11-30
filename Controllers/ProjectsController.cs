@@ -58,7 +58,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                     // Only Owner or Editor or Admin can add members; only Owner (or Admin) can change permissions/roles.
                     var canEditMembers = HasEditPermission(project, requesterId) || User.IsInRole("Admin");
                     if (!canEditMembers)
-                        return Forbid("You do not have permission to modify team members.");
+                        return StatusCode(403, new { message = "You do not have permission to modify team members." });
 
                     var updateDefs = new List<UpdateDefinition<FlowModels.Project>>();
 
@@ -122,7 +122,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                     {
                         var isOwner = project.Permissions != null && project.Permissions.TryGetValue(requesterId, out var role) && role == "Owner";
                         if (!isOwner && !User.IsInRole("Admin"))
-                            return Forbid("Only the project owner or an admin can update permissions.");
+                            return StatusCode(403, new { message = "Only the project owner or an admin can update permissions." });
 
                         var membersChangedDuringPermissions = false;
                         foreach (var kv in dto.Permissions)
@@ -199,11 +199,11 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                     // Only Owner or Editor or Admin can remove members
                     var canEditMembers = HasEditPermission(project, requesterId) || User.IsInRole("Admin");
                     if (!canEditMembers)
-                        return Forbid("You do not have permission to modify team members.");
+                        return StatusCode(403, new { message = "You do not have permission to modify team members." });
 
                     // Prevent removing the project owner or creator
                     if (!string.IsNullOrWhiteSpace(project.CreatedBy) && project.CreatedBy == memberId)
-                        return Forbid("Cannot remove the project owner/creator from team members.");
+                        return StatusCode(403, new { message = "Cannot remove the project owner/creator from team members." });
 
                     // Verify user exists
                     var usersCollection = db.GetCollection<FlowModels.User>("user");
@@ -221,7 +221,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                     {
                         var isRequesterOwner = project.Permissions.ContainsKey(requesterId) && project.Permissions[requesterId] == "Owner";
                         if (!isRequesterOwner && !User.IsInRole("Admin"))
-                            return Forbid("Only an owner or admin can remove an owner from the team.");
+                            return StatusCode(403, new { message = "Only an owner or admin can remove an owner from the team." });
                     }
 
                     // Remove from members and permissions if present
@@ -275,7 +275,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                     var isOwner = (!string.IsNullOrWhiteSpace(project.CreatedBy) && project.CreatedBy == requesterId) ||
                                   (project.Permissions != null && project.Permissions.ContainsKey(requesterId) && project.Permissions[requesterId] == "Owner");
                     if (isOwner)
-                        return Forbid("Project owners cannot leave the project. Transfer ownership or delete the project instead.");
+                        return StatusCode(403, new { message = "Project owners cannot leave the project. Transfer ownership or delete the project instead." });
 
                     var members = project.TeamMembers ?? new List<string>();
                     if (!members.Contains(requesterId))
@@ -347,6 +347,49 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             return Ok(projects);
         }
 
+        // 🔹 GET /api/projects/{id}/members - Get all members with their details (must be before {id:length(24)} route)
+        [HttpGet("{id}/members")]
+        [AllowAnonymous]
+        public IActionResult GetMembers(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return BadRequest(new { message = "Invalid id." });
+
+            var db = _mongoDbService.GetDatabase();
+            var collection = db.GetCollection<FlowModels.Project>("project");
+            var project = collection.Find(p => p.Id == id).FirstOrDefault();
+
+            if (project == null)
+                return NotFound(new { message = "Project not found." });
+
+            // Get user details for all team members
+            var usersCollection = db.GetCollection<FlowModels.User>("user");
+            var memberIds = project.TeamMembers ?? new List<string>();
+            
+            if (memberIds.Count == 0)
+                return Ok(new List<object>());
+
+            var userFilter = Builders<FlowModels.User>.Filter.In(u => u.Id, memberIds);
+            var users = usersCollection.Find(userFilter).ToList();
+
+            // Map users with their roles/permissions
+            var membersWithRoles = users.Select(user => new
+            {
+                id = user.Id,
+                userName = user.UserName,
+                firstName = user.FirstName,
+                middleName = user.MiddleName,
+                lastName = user.LastName,
+                email = user.Email,
+                userIMG = user.UserIMG,
+                role = project.Permissions != null && project.Permissions.ContainsKey(user.Id) 
+                    ? project.Permissions[user.Id] 
+                    : "Team Member"
+            }).ToList();
+
+            return Ok(membersWithRoles);
+        }
+
         // 🔹 GET /api/projects/{id}
         // Behavior: if {id} matches a project ID, return that project; otherwise treat {id} as a userId and return projects created by that user
         // Constrain {id} to 24-character ObjectId strings to avoid ambiguous matches with the base GET
@@ -377,7 +420,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             if (requesterId == null)
                 return Unauthorized(new { message = "Invalid user token." });
             if (requesterId != id && !User.IsInRole("Admin"))
-                return Forbid("You do not have permission to view other user's projects.");
+                return StatusCode(403, new { message = "You do not have permission to view other user's projects." });
 
             var userProjects = collection.Find(p => p.CreatedBy == id).ToList();
             return Ok(userProjects);
@@ -435,7 +478,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             var userId = GetUserIdFromToken();
             if (userId == null || !HasEditPermission(existingProject, userId))
-                return Forbid("You do not have permission to edit this project.");
+                return StatusCode(403, new { message = "You do not have permission to edit this project." });
 
             updatedProject.Id = id;
             updatedProject.CreatedAt = existingProject.CreatedAt;
@@ -467,7 +510,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             var isOwner = project.Permissions != null && project.Permissions.ContainsKey(userId) && project.Permissions[userId] == "Owner";
             if (!isOwner && !User.IsInRole("Admin"))
-                return Forbid("Only the project owner or an admin can delete this project.");
+                return StatusCode(403, new { message = "Only the project owner or an admin can delete this project." });
 
             collection.DeleteOne(p => p.Id == id);
             return Ok(new { message = "Project deleted successfully.", id = id });
@@ -489,7 +532,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             var userId = GetUserIdFromToken();
             if (userId == null || !project.Permissions.ContainsKey(userId) || project.Permissions[userId] != "Owner")
-                return Forbid("Only the project owner can update permissions.");
+                return StatusCode(403, new { message = "Only the project owner can update permissions." });
 
             project.Permissions[update["userId"]] = update["role"];
             collection.ReplaceOne(p => p.Id == id, project);
@@ -518,7 +561,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             // Only Owner or Editor (HasEditPermission) can update name/description/teamMembers.
             if (!HasEditPermission(project, requesterId) && !User.IsInRole("Admin"))
-                return Forbid("You do not have permission to update this project.");
+                return StatusCode(403, new { message = "You do not have permission to update this project." });
 
             var updateDefs = new List<UpdateDefinition<FlowModels.Project>>();
 
@@ -580,7 +623,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
                 // require owner
                 if (!project.Permissions.ContainsKey(requesterId) || project.Permissions[requesterId] != "Owner")
-                    return Forbid("Only the project owner can update permissions.");
+                    return StatusCode(403, new { message = "Only the project owner can update permissions." });
 
                 var newPermissions = new Dictionary<string, string>(project.Permissions);
 
