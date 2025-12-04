@@ -406,6 +406,55 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
+        // PATCH /api/tasks/{id}/category - Update only the category of a task
+        [HttpPatch("{id}/category")]
+        public async Task<IActionResult> PatchCategory(string id, [FromBody] PatchCategoryDto dto)
+        {
+            if (!ObjectId.TryParse(id, out _))
+                return BadRequest(new { message = "Invalid ID format." });
+
+            if (dto == null || string.IsNullOrWhiteSpace(dto.CategoryId))
+                return BadRequest(new { message = "CategoryId is required." });
+
+            try
+            {
+                // Fetch existing task to get projectId for validation
+                var existingTask = await _tasksCollection.Find(t => t.Id == id).FirstOrDefaultAsync();
+                if (existingTask == null)
+                    return NotFound(new { message = "Task not found." });
+
+                // Validate that categoryId exists and belongs to the task's project
+                var db = _mongoDbService.GetDatabase();
+                var categoriesCollection = db.GetCollection<FlowModels.Category>("categories");
+                var category = await categoriesCollection.Find(c => c.Id == dto.CategoryId).FirstOrDefaultAsync();
+
+                if (category == null)
+                    return BadRequest(new { message = "CategoryId does not exist." });
+
+                if (category.ProjectId != existingTask.ProjectId)
+                    return BadRequest(new { message = "CategoryId does not belong to the task's project." });
+
+                // Update both CategoryId and Category name
+                var update = Builders<TaskModel>.Update
+                    .Set(t => t.CategoryId, dto.CategoryId)
+                    .Set(t => t.Category, category.CategoryName);
+
+                var result = await _tasksCollection.UpdateOneAsync(
+                    Builders<TaskModel>.Filter.Eq("_id", ObjectId.Parse(id)),
+                    update
+                );
+
+                if (result.MatchedCount == 0)
+                    return NotFound(new { message = "Task not found." });
+
+                return Ok(new { message = "Task category updated.", categoryId = dto.CategoryId, categoryName = category.CategoryName });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to update task category.", detail = ex.Message });
+            }
+        }
+
         // DELETE /api/tasks/{id} - Delete a task
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
@@ -465,6 +514,12 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             public List<string>? AssignedTo { get; set; }
             public string? StartDate { get; set; }
             public string? EndDate { get; set; }
+        }
+
+        // DTO for patching only the category
+        public class PatchCategoryDto
+        {
+            public string? CategoryId { get; set; }
         }
     }
 }

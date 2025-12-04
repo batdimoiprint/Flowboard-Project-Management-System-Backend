@@ -27,7 +27,7 @@ POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
-  "UserNameOrEmail": "johnkennyreyes21gmail.com",
+  "UserNameOrEmail": "batdimoiprint",
   "password": "Hatdog21!"
 }
 
@@ -301,8 +301,8 @@ Authorization: Bearer {{login.response.body.token}}
 
 ### Notifications: proposed controller (currently not implemented)
 
-### Tasks - Partial Update: Change Category
-PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
+### Tasks - Move Task to Different Category (PATCH category only)
+PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}/category
 Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
 
