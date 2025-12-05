@@ -12,6 +12,23 @@ namespace Flowboard_Project_Management_System_Backend.Models
     /// </summary>
     public static class FlowboardModel
     {
+        /// <summary>
+        /// Philippine Standard Geographic Code (PSGC) based address model
+        /// </summary>
+        public class Address
+        {
+            public string Region { get; set; } = string.Empty;
+            public string RegionCode { get; set; } = string.Empty;
+            public string Province { get; set; } = string.Empty;
+            public string ProvinceCode { get; set; } = string.Empty;
+            public string CityMunicipality { get; set; } = string.Empty;
+            public string CityMunicipalityCode { get; set; } = string.Empty;
+            public string Barangay { get; set; } = string.Empty;
+            public string BarangayCode { get; set; } = string.Empty;
+            public string StreetAddress { get; set; } = string.Empty;
+            public string ZipCode { get; set; } = string.Empty;
+        }
+
         public class User
         {
             [BsonId]
@@ -47,6 +64,12 @@ namespace Flowboard_Project_Management_System_Backend.Models
             [BsonRequired]
             [Required]
             public string Email { get; set; } = string.Empty;
+
+            public Address? Address { get; set; }
+
+            public Address? SecondaryAddress { get; set; }
+
+            public string? SecondaryContactNumber { get; set; }
 
             [BsonRequired]
             [Required]

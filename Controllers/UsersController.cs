@@ -95,8 +95,35 @@ public class UsersController : ControllerBase
             lastName = user.LastName,
             middleName = user.MiddleName,
             contactNumber = user.ContactNumber,
+            secondaryContactNumber = user.SecondaryContactNumber,
             birthDate = user.BirthDate,
             email = user.Email,
+            address = user.Address != null ? new
+            {
+                region = user.Address.Region,
+                regionCode = user.Address.RegionCode,
+                province = user.Address.Province,
+                provinceCode = user.Address.ProvinceCode,
+                cityMunicipality = user.Address.CityMunicipality,
+                cityMunicipalityCode = user.Address.CityMunicipalityCode,
+                barangay = user.Address.Barangay,
+                barangayCode = user.Address.BarangayCode,
+                streetAddress = user.Address.StreetAddress,
+                zipCode = user.Address.ZipCode
+            } : null,
+            secondaryAddress = user.SecondaryAddress != null ? new
+            {
+                region = user.SecondaryAddress.Region,
+                regionCode = user.SecondaryAddress.RegionCode,
+                province = user.SecondaryAddress.Province,
+                provinceCode = user.SecondaryAddress.ProvinceCode,
+                cityMunicipality = user.SecondaryAddress.CityMunicipality,
+                cityMunicipalityCode = user.SecondaryAddress.CityMunicipalityCode,
+                barangay = user.SecondaryAddress.Barangay,
+                barangayCode = user.SecondaryAddress.BarangayCode,
+                streetAddress = user.SecondaryAddress.StreetAddress,
+                zipCode = user.SecondaryAddress.ZipCode
+            } : null,
             userIMG = BytesToDataUrl(user.UserIMG),
             createdAt = user.CreatedAt
         };
@@ -126,6 +153,58 @@ public class UsersController : ControllerBase
         }
         
         return false;
+    }
+
+    // Helper: Parse Address from JsonElement or dictionary
+    private static FlowModels.Address? ParseAddressFromValue(object? value)
+    {
+        if (value == null) return null;
+
+        try
+        {
+            if (value is JsonElement jsonElement)
+            {
+                if (jsonElement.ValueKind != JsonValueKind.Object) return null;
+
+                return new FlowModels.Address
+                {
+                    Region = jsonElement.TryGetProperty("region", out var region) ? region.GetString() ?? string.Empty : string.Empty,
+                    RegionCode = jsonElement.TryGetProperty("regionCode", out var regionCode) ? regionCode.GetString() ?? string.Empty : string.Empty,
+                    Province = jsonElement.TryGetProperty("province", out var province) ? province.GetString() ?? string.Empty : string.Empty,
+                    ProvinceCode = jsonElement.TryGetProperty("provinceCode", out var provinceCode) ? provinceCode.GetString() ?? string.Empty : string.Empty,
+                    CityMunicipality = jsonElement.TryGetProperty("cityMunicipality", out var cityMunicipality) ? cityMunicipality.GetString() ?? string.Empty : string.Empty,
+                    CityMunicipalityCode = jsonElement.TryGetProperty("cityMunicipalityCode", out var cityMunicipalityCode) ? cityMunicipalityCode.GetString() ?? string.Empty : string.Empty,
+                    Barangay = jsonElement.TryGetProperty("barangay", out var barangay) ? barangay.GetString() ?? string.Empty : string.Empty,
+                    BarangayCode = jsonElement.TryGetProperty("barangayCode", out var barangayCode) ? barangayCode.GetString() ?? string.Empty : string.Empty,
+                    StreetAddress = jsonElement.TryGetProperty("streetAddress", out var streetAddress) ? streetAddress.GetString() ?? string.Empty : string.Empty,
+                    ZipCode = jsonElement.TryGetProperty("zipCode", out var zipCode) ? zipCode.GetString() ?? string.Empty : string.Empty
+                };
+            }
+
+            // Handle Dictionary<string, object> case
+            if (value is Dictionary<string, object> dict)
+            {
+                return new FlowModels.Address
+                {
+                    Region = dict.TryGetValue("region", out var region) ? GetStringValue(region) ?? string.Empty : string.Empty,
+                    RegionCode = dict.TryGetValue("regionCode", out var regionCode) ? GetStringValue(regionCode) ?? string.Empty : string.Empty,
+                    Province = dict.TryGetValue("province", out var province) ? GetStringValue(province) ?? string.Empty : string.Empty,
+                    ProvinceCode = dict.TryGetValue("provinceCode", out var provinceCode) ? GetStringValue(provinceCode) ?? string.Empty : string.Empty,
+                    CityMunicipality = dict.TryGetValue("cityMunicipality", out var cityMunicipality) ? GetStringValue(cityMunicipality) ?? string.Empty : string.Empty,
+                    CityMunicipalityCode = dict.TryGetValue("cityMunicipalityCode", out var cityMunicipalityCode) ? GetStringValue(cityMunicipalityCode) ?? string.Empty : string.Empty,
+                    Barangay = dict.TryGetValue("barangay", out var barangay) ? GetStringValue(barangay) ?? string.Empty : string.Empty,
+                    BarangayCode = dict.TryGetValue("barangayCode", out var barangayCode) ? GetStringValue(barangayCode) ?? string.Empty : string.Empty,
+                    StreetAddress = dict.TryGetValue("streetAddress", out var streetAddress) ? GetStringValue(streetAddress) ?? string.Empty : string.Empty,
+                    ZipCode = dict.TryGetValue("zipCode", out var zipCode) ? GetStringValue(zipCode) ?? string.Empty : string.Empty
+                };
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     // Returns all users (passwords stripped) for assignment dropdowns
@@ -249,6 +328,46 @@ public class UsersController : ControllerBase
                     {
                         var hashed = BCrypt.Net.BCrypt.HashPassword(stringValue);
                         updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.Password, hashed));
+                    }
+                    break;
+                case "secondarycontactnumber":
+                case "secondary_contact_number":
+                    if (IsNullValue(value))
+                    {
+                        updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.SecondaryContactNumber, (string?)null));
+                    }
+                    else if (!string.IsNullOrWhiteSpace(stringValue))
+                    {
+                        updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.SecondaryContactNumber, stringValue));
+                    }
+                    break;
+                case "address":
+                    if (IsNullValue(value))
+                    {
+                        updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.Address, (FlowModels.Address?)null));
+                    }
+                    else
+                    {
+                        var address = ParseAddressFromValue(value);
+                        if (address != null)
+                        {
+                            updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.Address, address));
+                        }
+                    }
+                    break;
+                case "secondaryaddress":
+                case "secondary_address":
+                    if (IsNullValue(value))
+                    {
+                        updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.SecondaryAddress, (FlowModels.Address?)null));
+                    }
+                    else
+                    {
+                        var secondaryAddress = ParseAddressFromValue(value);
+                        if (secondaryAddress != null)
+                        {
+                            updateDefs.Add(Builders<FlowModels.User>.Update.Set(u => u.SecondaryAddress, secondaryAddress));
+                        }
                     }
                     break;
                 // intentionally skip Id and CreatedAt updates
