@@ -57,12 +57,12 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             {
                 if (includeTasks)
                 {
-                    var tasksCollection = db.GetCollection<FlowModels.Task>("tasks");
+                    var subTasksCollection = db.GetCollection<FlowModels.SubTask>("subtasks");
                     var categories = categoriesCollection.Find(c => c.ProjectId == projectId).ToList();
                     var response = new List<object>();
                     foreach (var c in categories)
                     {
-                        var tasks = tasksCollection.Find(t => t.ProjectId == c.ProjectId && t.Category == c.CategoryName).ToList();
+                        var tasks = subTasksCollection.Find(t => t.ProjectId == c.ProjectId && t.Category == c.CategoryName).ToList();
                         response.Add(new { category = c, tasks = tasks });
                     }
                     return Ok(response);
@@ -100,8 +100,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             var cat = categoriesCollection.Find(c => c.Id == id).FirstOrDefault();
             if (cat == null) return NotFound(new { message = "Category not found." });
 
-            var tasksCollection = db.GetCollection<FlowModels.Task>("tasks");
-            var tasks = tasksCollection.Find(t => t.ProjectId == cat.ProjectId && t.Category == cat.CategoryName).ToList();
+            var subTasksCollection = db.GetCollection<FlowModels.SubTask>("subtasks");
+            var tasks = subTasksCollection.Find(t => t.ProjectId == cat.ProjectId && t.Category == cat.CategoryName).ToList();
             return Ok(tasks);
         }
 

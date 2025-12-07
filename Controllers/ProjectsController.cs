@@ -382,7 +382,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                 lastName = user.LastName,
                 email = user.Email,
                 userIMG = user.UserIMG,
-                role = project.Permissions != null && project.Permissions.ContainsKey(user.Id) 
+                role = project?.Permissions != null && user?.Id != null && project.Permissions.ContainsKey(user.Id) 
                     ? project.Permissions[user.Id] 
                     : "Team Member"
             }).ToList();
@@ -393,7 +393,9 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
         // 🔹 GET /api/projects/{id}
         // Behavior: if {id} matches a project ID, return that project; otherwise treat {id} as a userId and return projects created by that user
         // Constrain {id} to 24-character ObjectId strings to avoid ambiguous matches with the base GET
+        // Clients can only read projects they are assigned to in Permissions
         [HttpGet("{id:length(24)}", Name = "GetProjectById")]
+        [Authorize(Policy = "ProjectRead")]
         public IActionResult GetById(string id, [FromQuery] bool includeTasks = false)
         {
             if (string.IsNullOrWhiteSpace(id))
@@ -401,24 +403,33 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             var db = _mongoDbService.GetDatabase();
             var collection = db.GetCollection<FlowModels.Project>("project");
+            var requesterId = GetUserIdFromToken();
+
+            if (requesterId == null)
+                return Unauthorized(new { message = "Invalid user token." });
 
             // First attempt: try to find a project with this id
             var project = collection.Find(p => p.Id == id).FirstOrDefault();
             if (project != null)
             {
+                // Check if user is Client role and verify they have permission on this project
+                if (User.IsInRole("Client"))
+                {
+                    var hasPermission = project.Permissions != null && project.Permissions.ContainsKey(requesterId);
+                    if (!hasPermission)
+                        return StatusCode(403, new { message = "You do not have permission to access this project." });
+                }
+
                 if (includeTasks)
                 {
-                    var tasksCollection = db.GetCollection<FlowModels.Task>("task");
-                    var tasks = tasksCollection.Find(t => t.ProjectId == project.Id).ToList();
+                    var subTasksCollection = db.GetCollection<FlowModels.SubTask>("subtasks");
+                    var tasks = subTasksCollection.Find(t => t.ProjectId == project.Id).ToList();
                     return Ok(new { project = project, tasks = tasks });
                 }
                 return Ok(project);
             }
 
             // Not a project id; treat as user id. Enforce requester must be the user or admin
-            var requesterId = GetUserIdFromToken();
-            if (requesterId == null)
-                return Unauthorized(new { message = "Invalid user token." });
             if (requesterId != id && !User.IsInRole("Admin"))
                 return StatusCode(403, new { message = "You do not have permission to view other user's projects." });
 

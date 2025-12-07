@@ -17,6 +17,7 @@ builder.Services.AddControllers()
     });
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<MongoDbService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddJwtAuthentication();
 var app = builder.Build();
 

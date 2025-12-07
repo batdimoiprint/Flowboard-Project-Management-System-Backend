@@ -78,6 +78,10 @@ namespace Flowboard_Project_Management_System_Backend.Models
             [BsonRequired]
             [Required]
             public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+            // User role: "Admin", "User" (default), or "Client"
+            [BsonRepresentation(BsonType.String)]
+            public string Role { get; set; } = "User";
         }
 
         public class LoginRequest
@@ -186,11 +190,16 @@ namespace Flowboard_Project_Management_System_Backend.Models
             public bool Delete { get; set; }
         }
 
-        public class Task
+        public class SubTask
         {
             [BsonId]
             [BsonRepresentation(BsonType.ObjectId)]
             public string? Id { get; set; }
+
+            // Parent MainTask reference
+            [BsonRepresentation(BsonType.ObjectId)]
+            [BsonElement("mainTaskId")]
+            public string? MainTaskId { get; set; }
 
             // Prefer storing a CategoryId reference to the Category document.
             [BsonRepresentation(BsonType.ObjectId)]
@@ -212,7 +221,6 @@ namespace Flowboard_Project_Management_System_Backend.Models
             public string? Title { get; set; }
             public string? Description { get; set; }
             public string? Priority { get; set; }
-            public string? Status { get; set; }
 
             [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
             public DateTime? StartDate { get; set; }
@@ -224,6 +232,23 @@ namespace Flowboard_Project_Management_System_Backend.Models
             public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
             public List<Comment> Comments { get; set; } = new();
+        }
+
+        public class MainTask
+        {
+            [BsonId]
+            [BsonRepresentation(BsonType.ObjectId)]
+            public string? Id { get; set; }
+
+            public string? Title { get; set; }
+            public string? Description { get; set; }
+
+            [BsonRepresentation(BsonType.ObjectId)]
+            [BsonElement("subTaskIds")]
+            public List<string> SubTaskIds { get; set; } = new();
+
+            [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+            public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         }
 
         public class Comment

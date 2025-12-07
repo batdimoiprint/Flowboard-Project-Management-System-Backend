@@ -27,7 +27,7 @@ POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
-  "UserNameOrEmail": "batdimoiprint",
+  "UserNameOrEmail": "samanthaqueen",
   "password": "Hatdog21!"
 }
 
@@ -72,8 +72,8 @@ Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
 
 {
-  "projectName": "IPT102",
-  "description": "Project Management System"
+  "projectName": "bacla AYOSYIN molang",
+  "description": "Project AHAAHAHAH HATDOGGG"
 }
 
 
@@ -150,114 +150,8 @@ Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
 
 ### ===============================
-### Tasks
-### ===============================
-
-### Tasks - Create (Protected) - Works
-# @name createTask
-POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks
-Content-Type: application/json
-Authorization: Bearer {{login.response.body.token}}
-
-{
-  "categoryId": "{{createCategory.response.body.id}}",
-  "assignedTo": "{{login.response.body.user.id}}",
-  "projectId": "{{createProject.response.body.id}}",
-  "title": "Plan",
-  "description": "Create a Plan.",
-  "priority": "Important",
-  "status": "Pending",
-  "startDate": "2025-11-06T09:00:00Z",
-  "endDate": "2025-11-13T17:00:00Z",
-  "createdBy": "{{login.response.body.user.id}}",
-  "comments": [
-    {
-      "authorId": "{{login.response.body.user.id}}",
-      "text": "Initial task created"
-    }
-  ]
-}
-
-### Tasks - Get Task from logged in user and assigned by other (Protected)
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/user/{{login.response.body.user.id}}
-Authorization: Bearer {{login.response.body.token}}
-Accept: application/json
-
-### Tasks - Get tasks for current authenticated user (shortcut)
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/me
-Authorization: Bearer {{login.response.body.token}}
-Accept: application/json
-
-### Tasks - Get All (Protected) - Works
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks
-Authorization: Bearer {{login.response.body.token}}
-Accept: application/json
-
-### Tasks - Get All for a Project (Protected) - Works
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks?projectId={{createProject.response.body.id}}
-Authorization: Bearer {{login.response.body.token}}
-Accept: application/json
-
-### Tasks - Get by ID (Protected) - Works
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
-Authorization: Bearer {{login.response.body.token}}
-Accept: application/json
-
-### Tasks - Update (Replace, Protected) - Works
-PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
-Content-Type: application/json
-Authorization: Bearer {{login.response.body.token}}
-
-{
-  "categoryId": "{{createCategory.response.body.id}}",
-  "projectId": "{{createProject.response.body.id}}",
-  "assignedTo": "690d04b90943671dbf22f65e",
-  "title": "Design database schema - updated",
-  "description": "Updated description with additional tables.",
-  "priority": "Medium",
-  "status": "Completed",
-  "startDate": "2025-11-06T09:00:00Z",
-  "endDate": "2025-11-14T17:00:00Z",
-  "createdBy": "690d04b90943671dbf22f65e",
-  "comments": [
-    {
-      "authorId": "690d04b90943671dbf22f65e",
-      "text": "Started work on schema",
-      "createdAt": "2025-11-07T10:00:00Z"
-    }
-  ]
-}
-
-### Tasks - Partial Update (PATCH, Protected) - Works
-PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
-Content-Type: application/json
-Authorization: Bearer {{login.response.body.token}}
-
-{
-  "status": "Completed",
-  "priority": "Important"
-}
-
-### Tasks - Delete (Protected) - Works
-DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}
-Authorization: Bearer {{login.response.body.token}}
-
-### Tasks - Add Comment (Protected) - Works
-POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}/comments
-Content-Type: application/json
-Authorization: Bearer {{login.response.body.token}}
-
-{
-  "authorId": "653e9b8f1a2b3c4d5e6f7891",
-  "text": "Please review the ER diagram.",
-  "createdAt": "2025-11-08T12:00:00Z"
-}
-
-
-### ===============================
 ### Categories (Per-Project) - Create/Read/Update/Delete
 ### ===============================
-
 
 ### Categories - Create (Protected) - CREATE - Working
 # @name createCategory
@@ -267,7 +161,7 @@ Authorization: Bearer {{login.response.body.token}}
 
 {
   "projectId": "{{createProject.response.body.id}}",
-  "categoryName": "Plan"
+  "categoryName": "HATDOG"
 }
 
 ### Categories - Get All From a Project (Protected) - READ - Working
@@ -291,6 +185,134 @@ Authorization: Bearer {{login.response.body.token}}
 DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/categories/{{createCategory.response.body.id}}
 Authorization: Bearer {{login.response.body.token}}
 
+### ===============================
+### MainTasks (Containers with Title and Description)
+### ===============================
+
+### MainTask - Create (Protected)
+# @name createMainTask
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/maintasks
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "title": "Sprint 1000 Tasks",
+  "description": "All tasks for the first sprint",
+  "subTaskId":"{{createSubTask.response.body.id}}"
+}
+
+### MainTask - Get All (Protected)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/maintasks
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### MainTask - Get by ID (Protected)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/maintasks/{{createMainTask.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### MainTask - Get SubTasks for MainTask (Protected)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/maintasks/{{createMainTask.response.body.id}}/subtasks
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### MainTask - Delete (Protected)
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/maintasks/{{createMainTask.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+
+### ===============================
+### SubTasks - Detailed breakdown of MainTasks (Create/Edit/Update/Delete)
+### SubTask is a child entity that provides more detailed explanation for a parent MainTask
+### ===============================
+
+### SubTask - Create (Protected) - DetailedTaskCreate Policy
+### SubTask belongs to a MainTask via MainTaskId field
+# @name createSubTask
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/subtasks
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "title": "design mo yung KENINI pubmat",
+  "description": "Create comprehensive database schema",
+  "priority": "Critical",
+  "mainTaskId": "{{createMainTask.response.body.id}}",
+  "projectId": "{{createProject.response.body.id}}",
+  "categoryId": "{{createCategory.response.body.id}}",
+  "assignedTo": ["{{login.response.body.user.id}}"],
+  "createdBy": "{{login.response.body.user.id}}",
+  "startDate": "2025-12-08T00:00:00Z",
+  "endDate": "2025-12-15T23:59:59Z"
+}
+
+### SubTask - Get All SubTasks
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/subtasks
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### SubTask - Get All SubTasks for a Project
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/subtasks?projectId={{createProject.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### SubTask - Get by ID (Protected)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/subtasks/{{createSubTask.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### SubTask - Get current user's SubTasks
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/subtasks/me
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### SubTask - Get SubTasks for specific user
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/subtasks/user/{{login.response.body.user.id}}
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### SubTask - Edit (PATCH, Protected) - DetailedTaskEdit Policy
+PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/subtasks/{{createSubTask.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "priority": "Important"
+}
+
+### SubTask - Update (PUT, Protected) - DetailedTaskUpdate Policy
+PUT {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/subtasks/{{createSubTask.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "title": "Design Database Schema - Updated",
+  "description": "Updated database schema",
+  "priority": "High",
+  "mainTaskId": "{{createMainTask.response.body.id}}",
+  "projectId": "{{createProject.response.body.id}}",
+  "categoryId": "{{createCategory.response.body.id}}",
+  "assignedTo": ["{{login.response.body.user.id}}"],
+  "createdBy": "{{login.response.body.user.id}}",
+  "startDate": "2025-12-08T00:00:00Z",
+  "endDate": "2025-12-20T23:59:59Z"
+}
+
+### SubTask - Delete (Protected) - DetailedTaskDelete Policy
+DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/subtasks/{{createSubTask.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+
+### SubTask - Add Comment (Protected)
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/subtasks/{{createSubTask.response.body.id}}/comments
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+  "authorId": "{{login.response.body.user.id}}",
+  "text": "Good progress on the task"
+}
+
+
+
 
 # TODO FOR NEXT
 
@@ -301,14 +323,6 @@ Authorization: Bearer {{login.response.body.token}}
 
 ### Notifications: proposed controller (currently not implemented)
 
-### Tasks - Move Task to Different Category (PATCH category only)
-PATCH {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/tasks/{{createTask.response.body.id}}/category
-Content-Type: application/json
-Authorization: Bearer {{login.response.body.token}}
-
-{
-  "categoryId": "{{createCategory.response.body.id}}"
-}
 ### - Endpoints: POST /api/notifications, GET /api/notifications?isRead=false, GET /api/notifications/{id}, PATCH /api/notifications/{id}, DELETE /api/notifications/{id}
 ### - Model: `FlowboardModel.Notification` (UserId, Message, IsRead, CreatedAt)
 
@@ -389,3 +403,87 @@ Authorization: Bearer {{login.response.body.token}}
 ### Permissions - Delete (Protected) - DELETE
 DELETE {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/permissions/{{permissionId}}
 Authorization: Bearer {{login.response.body.token}}
+
+### ===============================
+### Analytics - Dashboard Data
+### ===============================
+
+### Analytics - Get Summary (Overall system stats)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/analytics/summary
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### Analytics - Get Project Stats (Project-specific statistics)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/analytics/projects/{{createProject.response.body.id}}/stats
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### Analytics - Get User Overview (User assignment summary)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/analytics/users/{{login.response.body.user.id}}/overview
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### Analytics - Get Tasks Timeline (Task creation trends, last 30 days)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/analytics/tasks/timeline?days=30
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### Analytics - Get Top Performers (Top 5 users by task completion)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/analytics/top-performers?limit=5
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### Analytics - Get Kanban Stats (Project board statistics)
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/analytics/kanban/{{createProject.response.body.id}}
+Authorization: Bearer {{login.response.body.token}}
+Accept: application/json
+
+### ===============================
+### Role-Based Registration Tests
+### ===============================
+
+### Register as User (Default Role)
+# @name registerUser
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "userName": "testuser",
+  "firstName": "Test",
+  "middleName": "User",
+  "lastName": "Account",
+  "ContactNumber": "+639000000001",
+  "birthDate": "2000-01-01T00:00:00Z",
+  "userIMG": null,
+  "email": "testuser@example.com",
+  "password": "TestPassword123!",
+  "role": "User"
+}
+
+### Register as Client (Read-Only Role)
+# @name registerClient
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "userName": "testclient",
+  "firstName": "Test",
+  "middleName": "Client",
+  "lastName": "Account",
+  "ContactNumber": "+639000000002",
+  "birthDate": "2000-01-01T00:00:00Z",
+  "userIMG": null,
+  "email": "testclient@example.com",
+  "password": "TestPassword123!",
+  "role": "Client"
+}
+
+### Login as Client
+# @name loginClient
+POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "UserNameOrEmail": "testclient",
+  "password": "TestPassword123!"
+}

@@ -66,7 +66,42 @@ namespace Flowboard_Project_Management_System_Backend.Configurations
             });
 
             // Register Authorization as well, so callers don't have to explicitly add it
-            services.AddAuthorization();
+            services.AddAuthorization(options =>
+            {
+                // DetailedTask authorization policies
+                options.AddPolicy("DetailedTaskCreate", policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                });
+
+                options.AddPolicy("DetailedTaskEdit", policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                });
+
+                options.AddPolicy("DetailedTaskUpdate", policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                });
+
+                options.AddPolicy("DetailedTaskDelete", policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                });
+
+                // Client role - read-only access to assigned projects and tasks
+                options.AddPolicy("ClientReadOnly", policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.RequireRole("Client");
+                });
+
+                // Project read access for clients
+                options.AddPolicy("ProjectRead", policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                });
+            });
 
             return services;
         }

@@ -29,6 +29,21 @@ public class PublicController : ControllerBase
             return BadRequest(new { message = "Email or Username and password are required." });
         }
 
+        // Validate role if provided
+        if (!string.IsNullOrEmpty(user.Role) && 
+            user.Role != "Admin" && 
+            user.Role != "User" && 
+            user.Role != "Client")
+        {
+            return BadRequest(new { message = "Invalid role. Allowed roles: Admin, User, Client" });
+        }
+
+        // Default to 'User' if not specified
+        if (string.IsNullOrEmpty(user.Role))
+        {
+            user.Role = "User";
+        }
+
         var db = _mongoDbService.GetDatabase();
         var usersCollection = db.GetCollection<FlowModels.User>("user");
 
@@ -103,7 +118,7 @@ public class PublicController : ControllerBase
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim("role", "User") // optional role
+            new Claim(ClaimTypes.Role, user.Role ?? "User")
         };
 
         var token = new JwtSecurityToken(
