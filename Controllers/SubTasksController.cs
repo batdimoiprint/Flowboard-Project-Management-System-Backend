@@ -62,6 +62,37 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
+        // GET /api/subtasks/project/{projectId} - Get all subtasks for a specific project
+        [HttpGet("project/{projectId}")]
+        [Authorize(Policy = "ProjectRead")]
+        public async Task<IActionResult> GetByProject(string projectId)
+        {
+            if (string.IsNullOrWhiteSpace(projectId))
+                return BadRequest(new { message = "ProjectId is required." });
+
+            try
+            {
+                // If client, verify they have access to the project
+                if (User.IsInRole("Client"))
+                {
+                    var db = _mongoDbService.GetDatabase();
+                    var projectsCollection = db.GetCollection<FlowModels.Project>("project");
+                    var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    
+                    var project = await projectsCollection.Find(p => p.Id == projectId).FirstOrDefaultAsync();
+                    if (project == null || project?.Permissions == null || (userId != null && !project.Permissions.ContainsKey(userId)))
+                        return StatusCode(403, new { message = "You do not have permission to view tasks from this project." });
+                }
+
+                var subTasks = await _subTasksCollection.Find(st => st.ProjectId == projectId).ToListAsync();
+                return Ok(subTasks ?? new List<SubTaskModel>());
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to fetch subtasks for project.", detail = ex.Message });
+            }
+        }
+
         // GET /api/subtasks/me - Get subtasks for the currently authenticated user
         [HttpGet("me")]
         public async Task<IActionResult> GetForCurrentUser()
@@ -165,6 +196,22 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             if (string.IsNullOrWhiteSpace(subTaskDto.ProjectId))
                 return BadRequest(new { message = "ProjectId is required." });
 
+            // Parse dates from string format (YYYY-MM-DD)
+            DateTime? startDate = null;
+            DateTime? endDate = null;
+
+            if (!string.IsNullOrWhiteSpace(subTaskDto.StartDate))
+            {
+                if (DateTime.TryParse(subTaskDto.StartDate, out var parsedStart))
+                    startDate = DateTime.SpecifyKind(parsedStart, DateTimeKind.Utc);
+            }
+
+            if (!string.IsNullOrWhiteSpace(subTaskDto.EndDate))
+            {
+                if (DateTime.TryParse(subTaskDto.EndDate, out var parsedEnd))
+                    endDate = DateTime.SpecifyKind(parsedEnd, DateTimeKind.Utc);
+            }
+
             var subTask = new SubTaskModel
             {
                 Id = ObjectId.GenerateNewId().ToString(),
@@ -177,8 +224,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                 Category = subTaskDto.Category,
                 CreatedBy = subTaskDto.CreatedBy,
                 AssignedTo = subTaskDto.AssignedTo ?? new List<string>(),
-                StartDate = subTaskDto.StartDate,
-                EndDate = subTaskDto.EndDate,
+                StartDate = startDate,
+                EndDate = endDate,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -232,6 +279,22 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             if (existingSubTask == null)
                 return NotFound(new { message = "SubTask not found." });
 
+            // Parse dates from string format (YYYY-MM-DD)
+            DateTime? startDate = null;
+            DateTime? endDate = null;
+
+            if (!string.IsNullOrWhiteSpace(subTaskDto.StartDate))
+            {
+                if (DateTime.TryParse(subTaskDto.StartDate, out var parsedStart))
+                    startDate = DateTime.SpecifyKind(parsedStart, DateTimeKind.Utc);
+            }
+
+            if (!string.IsNullOrWhiteSpace(subTaskDto.EndDate))
+            {
+                if (DateTime.TryParse(subTaskDto.EndDate, out var parsedEnd))
+                    endDate = DateTime.SpecifyKind(parsedEnd, DateTimeKind.Utc);
+            }
+
             var updatedSubTask = new SubTaskModel
             {
                 Id = id,
@@ -244,8 +307,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                 Category = subTaskDto.Category,
                 CreatedBy = subTaskDto.CreatedBy,
                 AssignedTo = subTaskDto.AssignedTo ?? new List<string>(),
-                StartDate = subTaskDto.StartDate,
-                EndDate = subTaskDto.EndDate,
+                StartDate = startDate,
+                EndDate = endDate,
                 CreatedAt = existingSubTask.CreatedAt,
                 Comments = existingSubTask.Comments
             };
@@ -333,8 +396,22 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                         updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.Priority, value?.ToString()));
                         break;
                     case "categoryid":
-                        updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.CategoryId, value?.ToString()));
-                        break;
+                        {
+                            var categoryIdValue = value?.ToString();
+                            // Treat "uncategorized" (or empty) as clearing the category
+                            if (string.IsNullOrWhiteSpace(categoryIdValue) || categoryIdValue.Equals("uncategorized", StringComparison.OrdinalIgnoreCase))
+                            {
+                                updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.CategoryId, null));
+                                updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.Category, null));
+                            }
+                            else
+                            {
+                                if (!ObjectId.TryParse(categoryIdValue, out _))
+                                    return BadRequest(new { message = "CategoryId must be a valid ObjectId or 'uncategorized'." });
+                                updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.CategoryId, categoryIdValue));
+                            }
+                            break;
+                        }
                     case "assignedto":
                         if (value is JsonElement element && element.ValueKind == JsonValueKind.Array)
                         {
@@ -465,8 +542,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             public string? CategoryId { get; set; }
             public string? CreatedBy { get; set; }
             public List<string>? AssignedTo { get; set; }
-            public DateTime? StartDate { get; set; }
-            public DateTime? EndDate { get; set; }
+            public string? StartDate { get; set; }
+            public string? EndDate { get; set; }
         }
 
         // DTO for updating subtasks
@@ -481,8 +558,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             public string? CategoryId { get; set; }
             public string? CreatedBy { get; set; }
             public List<string>? AssignedTo { get; set; }
-            public DateTime? StartDate { get; set; }
-            public DateTime? EndDate { get; set; }
+            public string? StartDate { get; set; }
+            public string? EndDate { get; set; }
         }
     }
 }

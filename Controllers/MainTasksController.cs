@@ -31,6 +31,28 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             _subTasksCollection = _mongoDbService.GetCollection<SubTaskModel>("subtasks");
         }
 
+            // PUT /api/maintasks/{id} - Update a main task
+            [HttpPut("{id}")]
+            [Authorize(Policy = "DetailedTaskEdit")]
+            public async Task<IActionResult> Update(string id, [FromBody] UpdateMainTaskDto dto)
+            {
+                if (!ObjectId.TryParse(id, out _))
+                    return BadRequest(new { message = "Invalid main task ID format." });
+                if (dto == null)
+                    return BadRequest(new { message = "Invalid JSON or null body. Ensure Content-Type: application/json." });
+                if (string.IsNullOrWhiteSpace(dto.Title))
+                    return BadRequest(new { message = "Title is required." });
+
+                var update = Builders<MainTaskModel>.Update
+                    .Set(x => x.Title, dto.Title)
+                    .Set(x => x.Description, dto.Description);
+
+                var result = await _mainTasksCollection.UpdateOneAsync(x => x.Id == id, update);
+                if (result.MatchedCount == 0)
+                    return NotFound(new { message = "MainTask not found." });
+                return NoContent();
+            }
+
         // GET /api/maintasks - Get all main tasks
         [HttpGet]
         public async Task<IActionResult> GetAll()
@@ -146,6 +168,13 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             public string? Title { get; set; }
             public string? Description { get; set; }
         }
+
+            // DTO for updating main tasks
+            public class UpdateMainTaskDto
+            {
+                public string Title { get; set; }
+                public string Description { get; set; }
+            }
 
     }
 }
