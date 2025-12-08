@@ -244,6 +244,10 @@ namespace Flowboard_Project_Management_System_Backend.Models
             public string? Description { get; set; }
 
             [BsonRepresentation(BsonType.ObjectId)]
+            [BsonElement("projectId")]
+            public string? ProjectId { get; set; }
+
+            [BsonRepresentation(BsonType.ObjectId)]
             [BsonElement("subTaskIds")]
             public List<string> SubTaskIds { get; set; } = new();
 

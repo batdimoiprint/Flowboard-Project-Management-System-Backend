@@ -347,6 +347,22 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             return Ok(projects);
         }
 
+        // 🔹 GET /api/projects/member/all - Get projects where the current user is a team member
+        [HttpGet("member/all")]
+        public IActionResult GetProjectsAsMember()
+        {
+            var userId = GetUserIdFromToken();
+            if (userId == null)
+                return Unauthorized(new { message = "User not authenticated." });
+
+            var db = _mongoDbService.GetDatabase();
+            var collection = db.GetCollection<FlowModels.Project>("project");
+            
+            // Find projects where the current user is in the teamMembers list
+            var projects = collection.Find(p => p.TeamMembers.Contains(userId)).ToList();
+            return Ok(projects ?? new List<FlowModels.Project>());
+        }
+
         // 🔹 GET /api/projects/{id}/members - Get all members with their details (must be before {id:length(24)} route)
         [HttpGet("{id}/members")]
         [AllowAnonymous]

@@ -68,6 +68,24 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
+        // GET /api/maintasks/project/{projectId} - Get main tasks by project
+        [HttpGet("project/{projectId}")]
+        public async Task<IActionResult> GetByProject(string projectId)
+        {
+            if (!ObjectId.TryParse(projectId, out _))
+                return BadRequest(new { message = "Invalid project ID format." });
+
+            try
+            {
+                var mainTasks = await _mainTasksCollection.Find(mt => mt.ProjectId == projectId).ToListAsync();
+                return Ok(mainTasks ?? new List<MainTaskModel>());
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to fetch main tasks for project.", detail = ex.Message });
+            }
+        }
+
         // GET /api/maintasks/{id} - Get main task by ID
         [HttpGet("{id}", Name = "GetMainTaskById")]
         public async Task<IActionResult> GetById(string id)
@@ -106,6 +124,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                     Id = ObjectId.GenerateNewId().ToString(),
                     Title = mainTaskDto.Title,
                     Description = mainTaskDto.Description,
+                    ProjectId = mainTaskDto.ProjectId,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -167,6 +186,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
         {
             public string? Title { get; set; }
             public string? Description { get; set; }
+            public string? ProjectId { get; set; }
         }
 
             // DTO for updating main tasks
