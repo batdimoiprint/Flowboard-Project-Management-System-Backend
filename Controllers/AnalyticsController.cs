@@ -23,7 +23,22 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
     [HttpGet("summary")]
     [Authorize] // ensure only authenticated users (optionally Admin or ProjectMember)
-    public async Task<IActionResult> Summary() => Ok(await _analytics.GetSummaryAsync());
+    public async Task<IActionResult> Summary([FromQuery] string? projectId = null)
+    {
+        // If projectId is provided and user is client, verify access
+        if (!string.IsNullOrEmpty(projectId) && User.IsInRole("Client"))
+        {
+            var db = _mongoDbService.GetDatabase();
+            var projectsCollection = db.GetCollection<FlowModels.Project>("project");
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            
+            var project = await projectsCollection.Find(p => p.Id == projectId).FirstOrDefaultAsync();
+            if (project == null || project?.Permissions == null || (userId != null && !project.Permissions.ContainsKey(userId)))
+                return StatusCode(403, new { message = "You do not have permission to view analytics for this project." });
+        }
+
+        return Ok(await _analytics.GetSummaryAsync(projectId));
+    }
 
     [HttpGet("projects/{projectId}/stats")]
     [Authorize]
@@ -88,6 +103,55 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             var data = await _analytics.GetKanbanStatsAsync(projectId);
             return Ok(data);
+        }
+
+        [HttpGet("progress")]
+        [Authorize]
+        public async Task<IActionResult> TaskProgress(
+            [FromQuery] string? projectId = null,
+            [FromQuery] string? userId = null)
+        {
+            // If userId is provided and not the current user, check if admin
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (userId != currentUserId && !User.IsInRole("Admin"))
+                {
+                    return StatusCode(403, new { message = "You can only view your own task progress." });
+                }
+            }
+            else
+            {
+                // Default to current user
+                userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            }
+
+            // If projectId is provided and user is client, verify access
+            if (!string.IsNullOrEmpty(projectId) && User.IsInRole("Client"))
+            {
+                var db = _mongoDbService.GetDatabase();
+                var projectsCollection = db.GetCollection<FlowModels.Project>("project");
+                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                
+                var project = await projectsCollection.Find(p => p.Id == projectId).FirstOrDefaultAsync();
+                if (project == null || project?.Permissions == null || (currentUserId != null && !project.Permissions.ContainsKey(currentUserId)))
+                    return StatusCode(403, new { message = "You do not have permission to view this project's analytics." });
+            }
+
+            var progress = await _analytics.GetTaskProgressAsync(projectId, userId);
+            return Ok(progress);
+        }
+
+        [HttpGet("my-progress")]
+        [Authorize]
+        public async Task<IActionResult> MyProgress()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return BadRequest(new { message = "User ID not found." });
+
+            var progress = await _analytics.GetTaskProgressAsync(null, userId);
+            return Ok(progress);
         }
     }
 }

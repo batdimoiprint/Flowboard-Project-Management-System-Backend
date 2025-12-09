@@ -8,7 +8,12 @@ public record SummaryDto(
     int TasksCompleted,
     int TasksPending,
     int TasksOverdue,
-    int ActiveProjects
+    int ActiveProjects,
+    int TasksInProgress,
+    int TasksToDo,
+    int TasksBlocked,
+    Dictionary<string, int> TasksByStatus,
+    Dictionary<string, int> TasksByPriority
 );
 
 public record ProjectStatsDto(
@@ -19,7 +24,16 @@ public record ProjectStatsDto(
     int SubTaskCount,
     int CompletedSubTasks,
     int OverdueSubTasks,
-    object TasksByPriority // { Critical: 5, High: 10, ... }
+    Dictionary<string, int> TasksByPriority,
+    Dictionary<string, int> TasksByStatus,
+    double CompletionRate,
+    List<CategoryStats> TasksByCategory
+);
+
+public record CategoryStats(
+    string CategoryName,
+    int TotalTasks,
+    int CompletedTasks
 );
 
 public record UserOverviewDto(
@@ -28,9 +42,42 @@ public record UserOverviewDto(
     int AssignedTasks,
     int CompletedTasks,
     int PendingTasks,
-    IEnumerable<object> Assignments // small list of active tasks
+    int OverdueTasks,
+    double CompletionRate,
+    List<ProjectTaskSummary> ProjectSummaries
 );
 
-public record TimeseriesPoint(string Date, int Created, int Completed);
+public record ProjectTaskSummary(
+    string ProjectId,
+    string ProjectName,
+    int TotalTasks,
+    int CompletedTasks
+);
 
-public record TopPerformerDto(string UserId, string UserName, int CompletedCount);
+public record TimeseriesPoint(
+    string Date, 
+    int Created, 
+    int Completed,
+    int InProgress,
+    int Total
+);
+
+public record TopPerformerDto(
+    string UserId, 
+    string UserName, 
+    int CompletedCount,
+    double CompletionRate
+);
+
+public record TaskProgressDto(
+    int TotalTasks,
+    int CompletedTasks,
+    int InProgressTasks,
+    int ToDoTasks,
+    int BlockedTasks,
+    int OverdueTasks,
+    double CompletionPercentage,
+    double InProgressPercentage,
+    int RemainingTasks,
+    Dictionary<string, int> StatusBreakdown
+);

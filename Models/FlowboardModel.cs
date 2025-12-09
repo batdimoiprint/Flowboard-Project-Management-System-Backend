@@ -221,6 +221,9 @@ namespace Flowboard_Project_Management_System_Backend.Models
             public string? Title { get; set; }
             public string? Description { get; set; }
             public string? Priority { get; set; }
+            
+            [BsonElement("status")]
+            public string? Status { get; set; }
 
             [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
             public DateTime? StartDate { get; set; }

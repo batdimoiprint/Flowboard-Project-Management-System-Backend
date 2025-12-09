@@ -395,6 +395,35 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                     case "priority":
                         updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.Priority, value?.ToString()));
                         break;
+                    case "status":
+                        updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.Status, value?.ToString()));
+                        break;
+                    case "startdate":
+                        {
+                            var dateStr = value?.ToString();
+                            if (!string.IsNullOrWhiteSpace(dateStr) && DateTime.TryParse(dateStr, out var parsedDate))
+                            {
+                                updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.StartDate, parsedDate));
+                            }
+                            else if (string.IsNullOrWhiteSpace(dateStr))
+                            {
+                                updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.StartDate, null));
+                            }
+                            break;
+                        }
+                    case "enddate":
+                        {
+                            var dateStr = value?.ToString();
+                            if (!string.IsNullOrWhiteSpace(dateStr) && DateTime.TryParse(dateStr, out var parsedDate))
+                            {
+                                updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.EndDate, parsedDate));
+                            }
+                            else if (string.IsNullOrWhiteSpace(dateStr))
+                            {
+                                updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.EndDate, null));
+                            }
+                            break;
+                        }
                     case "categoryid":
                         {
                             var categoryIdValue = value?.ToString();

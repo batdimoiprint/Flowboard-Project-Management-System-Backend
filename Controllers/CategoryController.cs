@@ -141,10 +141,18 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             if (requesterId == null) return Unauthorized(new { message = "Invalid user token." });
             if (!HasProjectEditPermission(existing.ProjectId!, requesterId)) return Forbid("You do not have permission to update this category.");
 
-            updated.Id = id;
-            updated.CreatedBy = existing.CreatedBy;
-            categoriesCollection.ReplaceOne(c => c.Id == id, updated);
-            return StatusCode(200, new { message = "Category Updated." });
+            // Update fields
+            if (!string.IsNullOrWhiteSpace(updated.CategoryName))
+            {
+                existing.CategoryName = updated.CategoryName;
+            }
+            if (!string.IsNullOrWhiteSpace(updated.ProjectId))
+            {
+                existing.ProjectId = updated.ProjectId;
+            }
+
+            categoriesCollection.ReplaceOne(c => c.Id == id, existing);
+            return Ok(existing);
         }
 
         // DELETE /api/categories/{id}
