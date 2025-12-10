@@ -254,6 +254,80 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                     }
                 }
 
+                // 🔹 PUT /api/projects/{id}/member/{userId}/permissions - update a specific member's role/permissions
+                public class UpdateMemberPermissionsDto
+                {
+                    public string? Role { get; set; }
+                }
+
+                [HttpPut("{id}/member/{userId}/permissions")]
+                public IActionResult UpdateMemberPermissions(string id, string userId, [FromBody] UpdateMemberPermissionsDto dto)
+                {
+                    if (string.IsNullOrWhiteSpace(id))
+                        return BadRequest(new { message = "Invalid project id." });
+                    if (string.IsNullOrWhiteSpace(userId))
+                        return BadRequest(new { message = "Invalid user id." });
+                    if (dto == null || string.IsNullOrWhiteSpace(dto.Role))
+                        return BadRequest(new { message = "Role is required." });
+
+                    var db = _mongoDbService.GetDatabase();
+                    var collection = db.GetCollection<FlowModels.Project>("project");
+                    var project = collection.Find(p => p.Id == id).FirstOrDefault();
+                    if (project == null)
+                        return NotFound(new { message = "Project not found." });
+
+                    var requesterId = GetUserIdFromToken();
+                    if (requesterId == null)
+                        return Unauthorized(new { message = "Invalid user token." });
+
+                    // Only Owner or Admin can update permissions
+                    var isOwner = project.Permissions != null && project.Permissions.TryGetValue(requesterId, out var requesterRole) && requesterRole == "Owner";
+                    if (!isOwner && !User.IsInRole("Admin"))
+                        return StatusCode(403, new { message = "Only the project owner or an admin can update member permissions." });
+
+                    // Verify the user exists
+                    var usersCollection = db.GetCollection<FlowModels.User>("user");
+                    var userExists = usersCollection.Find(u => u.Id == userId).Any();
+                    if (!userExists)
+                        return BadRequest(new { message = "User does not exist." });
+
+                    // Ensure user is a team member first
+                    var members = project.TeamMembers ?? new List<string>();
+                    if (!members.Contains(userId))
+                    {
+                        // Add them to team members if not already
+                        members.Add(userId);
+                    }
+
+                    // Update permissions dictionary
+                    var permissions = project.Permissions ?? new Dictionary<string, string>();
+                    permissions[userId] = dto.Role;
+
+                    var updateDefs = new List<UpdateDefinition<FlowModels.Project>>
+                    {
+                        Builders<FlowModels.Project>.Update.Set(p => p.TeamMembers, members),
+                        Builders<FlowModels.Project>.Update.Set(p => p.Permissions, permissions)
+                    };
+
+                    try
+                    {
+                        var result = collection.UpdateOne(
+                            Builders<FlowModels.Project>.Filter.Eq("_id", ObjectId.Parse(id)),
+                            Builders<FlowModels.Project>.Update.Combine(updateDefs)
+                        );
+
+                        if (result.MatchedCount == 0)
+                            return NotFound(new { message = "Project not found." });
+
+                        var updatedProject = collection.Find(p => p.Id == id).FirstOrDefault();
+                        return Ok(updatedProject);
+                    }
+                    catch (Exception ex)
+                    {
+                        return StatusCode(500, new { message = "Failed to update member permissions.", detail = ex.Message });
+                    }
+                }
+
                 // 🔹 DELETE /api/projects/{id}/leave - remove the current authenticated user from the project
                 [HttpDelete("{id}/leave")]
                 public IActionResult LeaveProject(string id)
