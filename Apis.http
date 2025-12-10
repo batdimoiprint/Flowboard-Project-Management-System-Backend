@@ -27,7 +27,7 @@ POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
-  "UserNameOrEmail": "samanthaqueen",
+  "UserNameOrEmail": "batdimoiprint",
   "password": "Hatdog21!"
 }
 
@@ -414,7 +414,7 @@ Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 
 ### Analytics - Get Project Stats (Project-specific statistics)
-GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/analytics/projects/{{createProject.response.body.id}}/stats
+GET {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/analytics/projects/6936c1cb666fe707a30b2c08/stats
 Authorization: Bearer {{login.response.body.token}}
 Accept: application/json
 

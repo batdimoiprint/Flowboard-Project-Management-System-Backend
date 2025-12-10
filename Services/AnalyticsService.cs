@@ -105,7 +105,25 @@ namespace Flowboard_Project_Management_System_Backend.Services
         public async Task<ProjectStatsDto> GetProjectStatsAsync(string projectId)
         {
             var db = _mongoDbService.GetDatabase();
+            var projectsCollection = db.GetCollection<FlowModels.Project>("project");
+            var mainTasksCollection = db.GetCollection<FlowModels.MainTask>("maintasks");
             var subTasksCollection = db.GetCollection<FlowModels.SubTask>("subtasks");
+            var categoriesCollection = db.GetCollection<FlowModels.Category>("categories");
+
+            // Get the project
+            var project = await projectsCollection.Find(p => p.Id == projectId).FirstOrDefaultAsync();
+            if (project == null)
+            {
+                throw new Exception("Project not found");
+            }
+
+            // Get team member count
+            var memberCount = project.TeamMembers?.Count ?? 0;
+
+            // Get main tasks count for this project
+            var mainTaskCount = (int)await mainTasksCollection.CountDocumentsAsync(m => m.ProjectId == projectId);
+
+            // Get all subtasks for this project
             var tasks = await subTasksCollection.Find(s => s.ProjectId == projectId).ToListAsync();
             var subTaskCount = tasks.Count;
             var completedTasks = tasks.Count(t => t.Status?.ToLower() == "done" || t.Status?.ToLower() == "completed");
@@ -119,27 +137,47 @@ namespace Flowboard_Project_Management_System_Backend.Services
             );
 
             var tasksByPriority = tasks
-                .GroupBy(t => string.IsNullOrEmpty(t.Priority) ? "Medium" : t.Priority)
+                .GroupBy(t => string.IsNullOrEmpty(t.Priority) ? "medium" : t.Priority.ToLower())
                 .ToDictionary(g => g.Key, g => g.Count());
 
             var tasksByStatus = tasks
-                .GroupBy(t => string.IsNullOrEmpty(t.Status) ? "To Do" : t.Status)
+                .GroupBy(t => string.IsNullOrEmpty(t.Status) ? "to Do" : t.Status)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            var completionRate = subTaskCount > 0 ? Math.Round((double)completedTasks / subTaskCount * 100, 2) : 0;
+            // Get tasks by category
+            var categories = await categoriesCollection.Find(c => c.ProjectId == projectId).ToListAsync();
+            var tasksByCategory = new List<CategoryStats>();
+            
+            foreach (var category in categories)
+            {
+                var categoryTasks = tasks.Where(t => t.CategoryId == category.Id).ToList();
+                var categoryTaskCount = categoryTasks.Count;
+                var completedCategoryTasks = categoryTasks.Count(t => t.Status?.ToLower() == "done" || t.Status?.ToLower() == "completed");
+                
+                if (categoryTaskCount > 0)
+                {
+                    tasksByCategory.Add(new CategoryStats(
+                        CategoryName: category.CategoryName ?? "Uncategorized",
+                        TotalTasks: categoryTaskCount,
+                        CompletedTasks: completedCategoryTasks
+                    ));
+                }
+            }
+
+            var completionRate = subTaskCount > 0 ? (double)completedTasks / subTaskCount : 0;
 
             return new ProjectStatsDto(
                 ProjectId: projectId,
-                ProjectName: "Project",
-                MemberCount: 0,
-                MainTaskCount: 0,
+                ProjectName: project.ProjectName ?? "Project",
+                MemberCount: memberCount,
+                MainTaskCount: mainTaskCount,
                 SubTaskCount: subTaskCount,
                 CompletedSubTasks: completedTasks,
                 OverdueSubTasks: overdueTasks,
                 TasksByPriority: tasksByPriority,
                 TasksByStatus: tasksByStatus,
                 CompletionRate: completionRate,
-                TasksByCategory: new List<CategoryStats>()
+                TasksByCategory: tasksByCategory
             );
         }
 
