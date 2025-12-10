@@ -246,6 +246,12 @@ namespace Flowboard_Project_Management_System_Backend.Models
             public string? Title { get; set; }
             public string? Description { get; set; }
 
+            [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+            public DateTime? StartDate { get; set; }
+
+            [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+            public DateTime? EndDate { get; set; }
+
             [BsonRepresentation(BsonType.ObjectId)]
             [BsonElement("projectId")]
             public string? ProjectId { get; set; }

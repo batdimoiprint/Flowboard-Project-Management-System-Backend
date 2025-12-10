@@ -45,7 +45,9 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
                 var update = Builders<MainTaskModel>.Update
                     .Set(x => x.Title, dto.Title)
-                    .Set(x => x.Description, dto.Description);
+                    .Set(x => x.Description, dto.Description)
+                    .Set(x => x.StartDate, dto.StartDate)
+                    .Set(x => x.EndDate, dto.EndDate);
 
                 var result = await _mainTasksCollection.UpdateOneAsync(x => x.Id == id, update);
                 if (result.MatchedCount == 0)
@@ -124,6 +126,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                     Id = ObjectId.GenerateNewId().ToString(),
                     Title = mainTaskDto.Title,
                     Description = mainTaskDto.Description,
+                    StartDate = mainTaskDto.StartDate,
+                    EndDate = mainTaskDto.EndDate,
                     ProjectId = mainTaskDto.ProjectId,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -187,6 +191,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             public string? Title { get; set; }
             public string? Description { get; set; }
             public string? ProjectId { get; set; }
+            public DateTime? StartDate { get; set; }
+            public DateTime? EndDate { get; set; }
         }
 
             // DTO for updating main tasks
@@ -194,6 +200,8 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             {
                 public string Title { get; set; }
                 public string Description { get; set; }
+                public DateTime? StartDate { get; set; }
+                public DateTime? EndDate { get; set; }
             }
 
     }

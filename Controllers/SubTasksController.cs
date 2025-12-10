@@ -478,6 +478,75 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             }
         }
 
+        // PATCH /api/subtasks/{id}/category - Update category of a subtask
+        [HttpPatch("{id}/category")]
+        [Authorize(Policy = "DetailedTaskEdit")]
+        public async Task<IActionResult> UpdateCategory(string id, [FromBody] UpdateCategoryDto categoryDto)
+        {
+            if (!ObjectId.TryParse(id, out _))
+                return BadRequest(new { message = "Invalid ID format." });
+
+            if (categoryDto == null)
+                return BadRequest(new { message = "Category data is required." });
+
+            var existingSubTask = await _subTasksCollection.Find(st => st.Id == id).FirstOrDefaultAsync();
+            if (existingSubTask == null)
+                return NotFound(new { message = "SubTask not found." });
+
+            // Validate categoryId if provided and not empty
+            if (!string.IsNullOrWhiteSpace(categoryDto.CategoryId))
+            {
+                var db = _mongoDbService.GetDatabase();
+                var categoriesCollection = db.GetCollection<FlowModels.Category>("categories");
+                var categoryExists = categoriesCollection.Find(c => c.Id == categoryDto.CategoryId).FirstOrDefault();
+                if (categoryExists == null)
+                    return BadRequest(new { message = "CategoryId does not exist." });
+                if (categoryExists.ProjectId != existingSubTask.ProjectId)
+                    return BadRequest(new { message = "CategoryId does not belong to the same project." });
+            }
+
+            try
+            {
+                var updateDefs = new List<UpdateDefinition<SubTaskModel>>();
+
+                if (!string.IsNullOrWhiteSpace(categoryDto.CategoryId))
+                {
+                    updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.CategoryId, categoryDto.CategoryId));
+                    var db = _mongoDbService.GetDatabase();
+                    var categoriesCollection = db.GetCollection<FlowModels.Category>("categories");
+                    var categoryExists = categoriesCollection.Find(c => c.Id == categoryDto.CategoryId).FirstOrDefault();
+                    if (categoryExists != null)
+                    {
+                        updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.Category, categoryExists.CategoryName));
+                    }
+                }
+                else if (string.IsNullOrWhiteSpace(categoryDto.CategoryId) && categoryDto.CategoryId == "")
+                {
+                    // Clear category
+                    updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.CategoryId, null));
+                    updateDefs.Add(Builders<SubTaskModel>.Update.Set(st => st.Category, null));
+                }
+
+                if (updateDefs.Count == 0)
+                    return BadRequest(new { message = "No valid category updates provided." });
+
+                var update = Builders<SubTaskModel>.Update.Combine(updateDefs);
+                var result = await _subTasksCollection.UpdateOneAsync(
+                    Builders<SubTaskModel>.Filter.Eq("_id", ObjectId.Parse(id)),
+                    update
+                );
+
+                if (result.MatchedCount == 0)
+                    return NotFound(new { message = "SubTask not found." });
+
+                return StatusCode(200, new { message = "Category updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to update category.", detail = ex.Message });
+            }
+        }
+
         // POST /api/subtasks/{id}/comments - Add a comment
         [HttpPost("{id}/comments")]
         public async Task<IActionResult> AddComment(string id, [FromBody] CommentDto commentDto)
@@ -549,6 +618,13 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             {
                 return StatusCode(500, new { message = "Failed to delete subtask.", detail = ex.Message });
             }
+        }
+
+        // DTO for updating category
+        public class UpdateCategoryDto
+        {
+            public string? CategoryId { get; set; }
+            public string? Category { get; set; }
         }
 
         // DTO for adding comments
