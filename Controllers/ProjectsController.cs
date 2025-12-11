@@ -245,8 +245,20 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
                         if (result.MatchedCount == 0)
                             return NotFound(new { message = "Project not found." });
 
+                        // Remove the member from all subtasks in this project
+                        var subTasksCollection = db.GetCollection<FlowModels.SubTask>("subtasks");
+                        var subTaskFilter = Builders<FlowModels.SubTask>.Filter.And(
+                            Builders<FlowModels.SubTask>.Filter.Eq(st => st.ProjectId, id),
+                            Builders<FlowModels.SubTask>.Filter.AnyEq(st => st.AssignedTo, memberId)
+                        );
+                        var subTaskUpdate = Builders<FlowModels.SubTask>.Update.Pull(st => st.AssignedTo, memberId);
+                        var subTasksUpdateResult = subTasksCollection.UpdateMany(subTaskFilter, subTaskUpdate);
+
                         var updatedProject = collection.Find(p => p.Id == id).FirstOrDefault();
-                        return Ok(updatedProject);
+                        return Ok(new { 
+                            project = updatedProject, 
+                            tasksUpdated = subTasksUpdateResult.ModifiedCount 
+                        });
                     }
                     catch (Exception ex)
                     {
@@ -456,6 +468,14 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             var usersCollection = db.GetCollection<FlowModels.User>("user");
             var memberIds = project.TeamMembers ?? new List<string>();
             
+            // Filter out members who have "Client" role in permissions
+            if (project.Permissions != null)
+            {
+                memberIds = memberIds.Where(memberId => 
+                    !project.Permissions.TryGetValue(memberId, out var role) || role != "Client"
+                ).ToList();
+            }
+            
             if (memberIds.Count == 0)
                 return Ok(new List<object>());
 
@@ -613,8 +633,28 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             if (!isOwner && !User.IsInRole("Admin"))
                 return StatusCode(403, new { message = "Only the project owner or an admin can delete this project." });
 
+            // Delete all subtasks associated with this project
+            var subTasksCollection = db.GetCollection<FlowModels.SubTask>("subtasks");
+            var subTasksDeleteResult = subTasksCollection.DeleteMany(st => st.ProjectId == id);
+
+            // Delete all main tasks associated with this project
+            var mainTasksCollection = db.GetCollection<FlowModels.MainTask>("maintasks");
+            var mainTasksDeleteResult = mainTasksCollection.DeleteMany(mt => mt.ProjectId == id);
+
+            // Delete all categories associated with this project
+            var categoriesCollection = db.GetCollection<FlowModels.Category>("categories");
+            var categoriesDeleteResult = categoriesCollection.DeleteMany(c => c.ProjectId == id);
+
+            // Delete the project itself
             collection.DeleteOne(p => p.Id == id);
-            return Ok(new { message = "Project deleted successfully.", id = id });
+            
+            return Ok(new { 
+                message = "Project and all associated data deleted successfully.", 
+                id = id,
+                deletedSubTasks = subTasksDeleteResult.DeletedCount,
+                deletedMainTasks = mainTasksDeleteResult.DeletedCount,
+                deletedCategories = categoriesDeleteResult.DeletedCount
+            });
         }
 
         // 🔹 PATCH /api/projects/{id}/permissions

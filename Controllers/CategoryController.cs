@@ -34,16 +34,15 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             return string.IsNullOrWhiteSpace(userId) ? null : userId;
         }
 
-        private bool HasProjectEditPermission(string projectId, string userId)
+        private bool IsProjectTeamMember(string projectId, string userId)
         {
             if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(userId)) return false;
             var db = _mongoDbService.GetDatabase();
             var projects = db.GetCollection<FlowModels.Project>("project");
             var proj = projects.Find(p => p.Id == projectId).FirstOrDefault();
             if (proj == null) return false;
-            if (proj.Permissions == null) return false;
-            if (!proj.Permissions.TryGetValue(userId, out var role)) return false;
-            return role == "Owner" || role == "Editor" || User.IsInRole("Admin");
+            if (proj.TeamMembers == null) return false;
+            return proj.TeamMembers.Contains(userId);
         }
 
         // GET /api/categories?projectId=<id>&includeTasks=true
@@ -115,7 +114,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             var requesterId = GetUserIdFromToken();
             if (requesterId == null) return Unauthorized(new { message = "Invalid user token." });
-            if (!HasProjectEditPermission(category.ProjectId!, requesterId)) return Forbid("You do not have permission to create a category for this project.");
+            if (!IsProjectTeamMember(category.ProjectId!, requesterId)) return StatusCode(403, new { message = "You must be a team member of the project to create a category." });
 
             var db = _mongoDbService.GetDatabase();
             var categoriesCollection = db.GetCollection<FlowModels.Category>("categories");
@@ -139,7 +138,7 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
 
             var requesterId = GetUserIdFromToken();
             if (requesterId == null) return Unauthorized(new { message = "Invalid user token." });
-            if (!HasProjectEditPermission(existing.ProjectId!, requesterId)) return Forbid("You do not have permission to update this category.");
+            if (!IsProjectTeamMember(existing.ProjectId!, requesterId)) return StatusCode(403, new { message = "You must be a team member of the project to update a category." });
 
             // Update fields
             if (!string.IsNullOrWhiteSpace(updated.CategoryName))
@@ -169,6 +168,15 @@ namespace Flowboard_Project_Management_System_Backend.Controllers
             if (requesterId == null) return Unauthorized(new { message = "Invalid user token." });
             // Deletion allowed if user has project edit permission
             // if (!HasProjectEditPermission(existing.ProjectId!, requesterId)) return Forbid("You do not have permission to delete this category.");
+
+            // Remove category reference from all subtasks in this project
+            var subTasksCollection = db.GetCollection<FlowModels.SubTask>("subtasks");
+            var updateDefinition = Builders<FlowModels.SubTask>.Update
+                .Set(t => t.Category, null);
+            subTasksCollection.UpdateMany(
+                t => t.ProjectId == existing.ProjectId && t.Category == existing.CategoryName,
+                updateDefinition
+            );
 
             categoriesCollection.DeleteOne(c => c.Id == id);
             return Ok(new { message = "Category deleted successfully.", id = id });
