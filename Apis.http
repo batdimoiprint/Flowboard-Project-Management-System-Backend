@@ -10,15 +10,15 @@ POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/regist
 Content-Type: application/json
 
 {
-  "userName": "batdimoiprint",
-  "firstName": "John Kenny",
-  "middleName": "Q",
-  "lastName": "Reyes",
+  "userName": "username",
+  "firstName": "First name",
+  "middleName": "A",
+  "lastName": "Last",
   "ContactNumber": "+639123456789",
-  "birthDate": "2005-01-21T00:00:00Z",
+  "birthDate": "2000-01-01T00:00:00Z",
   "userIMG": null,
-  "email": "johnkennyreyes21gmail.com",
-  "password": "Hatdog21!"
+  "email": "exampleemail@gmail.com",
+  "password": "yourSecuredPassw0rd01!"
 }
 
 ### Auth - Login
@@ -27,8 +27,8 @@ POST {{Flowboard_Project_Management_System_Backend_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
-  "UserNameOrEmail": "batdimoiprint",
-  "password": "Hatdog21!"
+  "UserNameOrEmail": "username",
+  "password": "yourSecuredPassw0rd01!"
 }
 
 ### ===============================
