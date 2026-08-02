@@ -40,12 +40,6 @@ namespace Flowboard_Project_Management_System_Backend.Configurations
         // Adds JWT Authentication services using environment variables for keys/issuer/audience.
         public static IServiceCollection AddJwtAuthentication(this IServiceCollection services)
         {
-            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? string.Empty;
-            var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? string.Empty;
-            var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? string.Empty;
-
-            var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
-
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -53,16 +47,7 @@ namespace Flowboard_Project_Management_System_Backend.Configurations
             })
             .AddJwtBearer(options =>
             {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtIssuer,
-                    ValidAudience = jwtAudience,
-                    IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
-                };
+                options.TokenValidationParameters = JwtSettings.BuildValidationParameters();
             });
 
             // Register Authorization as well, so callers don't have to explicitly add it

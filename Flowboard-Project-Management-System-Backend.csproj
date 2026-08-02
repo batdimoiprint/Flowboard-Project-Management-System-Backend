@@ -8,12 +8,26 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <!-- Exclude the sibling Azure Functions restructuring projects: they live in
+         subdirectories of this project's root, and the Web SDK's default globs
+         (**/*.cs, **/*.json) are recursive and would otherwise pull their code
+         and config files into this project too. -->
+    <Compile Remove="Flowboard.Core/**" />
+    <Compile Remove="Flowboard.Functions/**" />
+    <Content Remove="Flowboard.Core/**" />
+    <Content Remove="Flowboard.Functions/**" />
+    <None Remove="Flowboard.Core/**" />
+    <None Remove="Flowboard.Functions/**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
-    <PackageReference Include="MongoDB.Driver" Version="3.5.0" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Flowboard.Core/Flowboard.Core.csproj" />
   </ItemGroup>
 
 </Project>

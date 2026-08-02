@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Azure Functions local settings (contains secrets)
+local.settings.json
+
 generated-http
 
 # User-specific files
